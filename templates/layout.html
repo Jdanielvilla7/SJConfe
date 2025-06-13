@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}App Check-in{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  <!-- PWA meta -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#00834e">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
+
+
+</head>
+
+<body>
+
+  <!-- Botón de menú para móviles -->
+  <button class="menu-toggle" onclick="toggleSidebar()">☰ Menú</button>
+
+  <!-- Menú lateral -->
+  <div class="sidebar" id="sidebar">
+    <div class="text-center mb-4">
+      <img src="{{ url_for('static', filename='img/confe_2025.jpg') }}" class="img-fluid rounded"
+        style="max-height: 100px;" alt="Logo Conferencia">
+    </div>
+
+    <h7 class="text-white mb-3"><i class="fas fa-bars me-2"></i> Menú</h7>
+    <a href="{{ url_for('routes.dashboard') }}" class="{% if request.endpoint == 'routes.dashboard' %}active{% endif %}">
+      <i class="fas fa-home me-2"></i>Dashboard
+    </a>
+    <a href="{{ url_for('routes.checkout') }}" class="{% if request.endpoint == 'routes.checkout' %}active{% endif %}">
+      <i class="fas fa-ticket me-2"></i>Check-in
+    </a>
+
+    {% if session.get('rol') in ['admin', 'coord'] %}
+    <a href="{{ url_for('routes.casos_especiales') }}" class="{% if request.endpoint == 'routes.casos_especiales' %}active{% endif %}">
+      <i class="fas fa-user-shield me-2"></i>Casos especiales
+    </a>
+    {% endif %}
+    {% if session.get('rol') == 'admin' %}
+     <a href="{{ url_for('routes.cargar_asistentes') }}" class="{% if request.endpoint == 'routes.cargar_asistentes' %}active{% endif %}">
+      <i class="fas fa-upload me-2"></i>Cargar información
+    </a>
+    <a href="{{ url_for('routes.ver_asistentes') }}" class="{% if request.endpoint == 'routes.ver_asistentes' %}active{% endif %}">
+      <i class="fas fa-table-list me-2"></i>Ver Asistentes
+    </a>
+    {% endif %}
+    <hr class="bg-white">
+
+    <a href="{{ url_for('routes.logout') }}">  <i class="fas fa-lock me-2"></i> Cerrar sesión</a>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="content" id="content">
+    <!-- Encabezado del contenido -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light rounded shadow-sm mb-4 px-4">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h5">Conferencia ETERNO | {% block h1 %}{% endblock %}</span>
+        <div class="d-none d-md-flex ms-auto align-items-center">
+          <span class="text-muted me-3 small">
+            Usuario: <strong>{{ session.get('username') }}</strong> | Rol: <strong>{{ session.get('rol') }}</strong>
+          </span>
+        </div>
+      </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Script para toggle del menú -->
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const content = document.getElementById('content');
+      sidebar.classList.toggle('active');
+      content.classList.toggle('active');
+    }
+  </script>
+
+</body>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
+      .then(reg => console.log("Service Worker registrado:", reg))
+      .catch(err => console.warn("Error al registrar SW:", err));
+  }
+</script>
+
+</html>

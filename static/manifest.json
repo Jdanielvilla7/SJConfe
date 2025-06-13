@@ -1,0 +1,22 @@
+{
+  "name": "Check-in Conferencia ETERNO",
+  "short_name": "Check-in ETERNO",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#00834e",
+  "theme_color": "#00834e",
+  "icons": [
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/screenshot1.png",
+      "sizes": "1918x826",
+      "type": "image/png"
+    }
+  ]
+}

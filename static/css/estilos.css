@@ -1,0 +1,106 @@
+/* === Base === */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.80rem;
+  color: #212529;
+}
+
+
+/* === Sidebar === */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background-color: #343a40;
+  color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  transition: left 0.3s ease;
+}
+
+.sidebar a {
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+}
+
+.sidebar a:hover {
+  background-color: #495057;
+}
+
+/* === Contenido principal === */
+.content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: 240px;
+  transition: transform 0.3s ease;
+}
+
+/* === Botón toggle de menú (visible solo en mobile) === */
+.menu-toggle {
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  z-index: 999;
+  background: #343a40;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+
+/* Ocultar botón de menú en pantallas grandes */
+@media (min-width: 769px) {
+  .menu-toggle {
+    display: none;
+  }
+}
+
+/* === Responsivo para móviles === */
+@media (max-width: 768px) {
+  .sidebar {
+    left: -240px;
+  }
+
+  .sidebar.active {
+    left: 0;
+  }
+
+  .content {
+    margin-left: 0;
+    padding-top: 80px;
+  }
+
+  /* Desplazar contenido cuando el menú está activo */
+  .sidebar.active + .content,
+  .content.active {
+    transform: translateX(240px);
+  }
+}
+
+/* === Imagen del login === */
+.card img {
+  max-height: 180px;
+  object-fit: cover;
+}
+
+/* === Página de login === */
+body.login-page {
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.sidebar a.active {
+  background-color: #6b6b6b;
+  font-weight: bold;
+}

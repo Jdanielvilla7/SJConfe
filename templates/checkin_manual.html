@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check-in Manual</title>
+</head>
+<body>
+  <h2>Buscar Asistente</h2>
+
+  <form method="POST">
+    <input type="text" name="busqueda" placeholder="Nombre, correo o ticket ID" value="{{ query or '' }}" required>
+    <button type="submit">Buscar</button>
+  </form>
+
+  {% if resultados %}
+    <h3>Resultados:</h3>
+    <table border="1" cellpadding="5">
+      <tr>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Ticket ID</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+      {% for asistente in resultados %}
+      <tr>
+        <td>{{ asistente.nombre }}</td>
+        <td>{{ asistente.correo }}</td>
+        <td>{{ asistente.ticket_id }}</td>
+        <td>
+          {% if asistente.checked_in %}
+            ✅ Registrado
+          {% else %}
+            ❌ No registrado
+          {% endif %}
+        </td>
+        <td>
+          {% if not asistente.checked_in %}
+            <form method="POST" action="{{ url_for('routes.confirmar_checkin_manual', id=asistente._id) }}">
+              <button type="submit">Check-in</button>
+            </form>
+          {% else %}
+            ---
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  {% elif query %}
+    <p>No se encontraron resultados para "{{ query }}"</p>
+  {% endif %}
+
+  <br>
+  <a href="{{ url_for('routes.dashboard') }}">Volver al Dashboard</a>
+</body>
+</html>
+

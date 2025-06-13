@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block title %}Casos Especiales{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <h2 class="mb-4">📌 Registro de Casos Especiales</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form method="POST" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nombre del asistente *</label>
+          <input type="text" class="form-control" name="nombre" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Autorizado por *</label>
+          <input type="text" class="form-control" name="autorizado_por" required>
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Descripción del caso especial *</label>
+          <textarea class="form-control" name="descripcion" rows="3" required></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Número de ticket (opcional)</label>
+          <input type="text" class="form-control" name="ticket_id">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Código de autorización (opcional)</label>
+          <input type="text" class="form-control" name="codigo_autorizacion">
+        </div>
+        <div class="col-12 text-end">
+          <button type="submit" class="btn btn-success">Registrar caso</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if casos %}
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark text-white">
+      Lista de Casos Registrados
+    </div>
+    <div class="card-body table-responsive">
+      <table class="table table-bordered table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Nombre</th>
+            <th>Autorizado por</th>
+            <th>Descripción</th>
+            <th>Ticket ID</th>
+            <th>Código</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for caso in casos %}
+          <tr>
+            <td>{{ caso.registrado_en.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ caso.nombre }}</td>
+            <td>{{ caso.autorizado_por }}</td>
+            <td>{{ caso.descripcion }}</td>
+            <td>{{ caso.ticket_id or '—' }}</td>
+            <td>{{ caso.codigo_autorizacion or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

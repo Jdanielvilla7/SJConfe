@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Asistentes</title>
+</head>
+<body>
+    <h2>Lista de Asistentes Cargados</h2>
+    <table border="1" cellpadding="5">
+        <tr>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Código QR</th>
+            <th>Check-in</th>
+        </tr>
+        {% for asistente in asistentes %}
+        <tr>
+            <td>{{ asistente.nombre }}</td>
+            <td>{{ asistente.correo }}</td>
+            <td>{{ asistente.codigo_qr }}</td>
+            <td>{{ '✅' if asistente.checked_in else '❌' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="{{ url_for('routes.dashboard') }}">Volver al Dashboard</a>
+</body>
+</html>

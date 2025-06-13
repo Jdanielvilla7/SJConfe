@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block h1 %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid pt-4">
+  <div class="row justify-content-center g-3">
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card text-white bg-success shadow-sm text-center">
+        <div class="card-body">
+          <h6 class="card-title">Con check-in</h6>
+          <p class="card-text fs-4">{{ registrados }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card text-white bg-danger shadow-sm text-center">
+        <div class="card-body">
+          <h6 class="card-title">Sin check-in</h6>
+          <p class="card-text fs-4">{{ pendientes }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card text-white bg-warning shadow-sm text-center">
+        <div class="card-body">
+          <h6 class="card-title">C. Especiales</h6>
+          <p class="card-text fs-4">{{ casos_especiales }}</p>
+        </div>
+      </div>
+    </div>
+ <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card text-white bg-primary shadow-sm text-center">
+        <div class="card-body">
+          <h6 class="card-title">Total </h6>
+          <p class="card-text fs-4">{{ total }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+      <div class="card text-white bg-dark shadow-sm text-center">
+        <div class="card-body">
+          <h6 class="card-title">Avance</h6>
+          <p class="card-text fs-4">{{ porcentaje }}%</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
