@@ -1,27 +1,55 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Lista de Asistentes</title>
-</head>
-<body>
-    <h2>Lista de Asistentes Cargados</h2>
-    <table border="1" cellpadding="5">
+{% extends 'layout.html' %}
+
+{% block title %}Asistentes{% endblock %}
+
+{% block h1 %}Lista de Asistentes <i class="fas fa-users"></i>{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  
+
+  <form method="GET" class="mb-4">
+    <div class="input-group">
+      <input type="text" name="busqueda" class="form-control" placeholder="Buscar por nombre, correo o ticket..." value="{{ request.args.get('busqueda', '') }}">
+      <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button>
+    </div>
+  </form>
+
+  <div class="table-responsive shadow rounded bg-white p-3">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
         <tr>
-            <th>Nombre</th>
-            <th>Correo</th>
-            <th>Código QR</th>
-            <th>Check-in</th>
+          <th>Nombre</th>
+          <th>Correo</th>
+          <th>Ticket</th>
+          <th>Check-in</th>
         </tr>
+      </thead>
+      <tbody>
         {% for asistente in asistentes %}
         <tr>
-            <td>{{ asistente.nombre }}</td>
-            <td>{{ asistente.correo }}</td>
-            <td>{{ asistente.codigo_qr }}</td>
-            <td>{{ '✅' if asistente.checked_in else '❌' }}</td>
+          <td>{{ asistente.nombre }}</td>
+          <td>{{ asistente.correo }}</td>
+          <td>{{ asistente.ticket_id or '—' }}</td>
+          <td>
+            {% if asistente.checked_in %}
+              <span class="text-success"><i class="fas fa-check-circle"></i> Sí</span>
+            {% else %}
+              <span class="text-danger"><i class="fas fa-times-circle"></i> No</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="text-center text-muted">No se encontraron asistentes.</td>
         </tr>
         {% endfor %}
+      </tbody>
     </table>
-    <br>
-    <a href="{{ url_for('routes.dashboard') }}">Volver al Dashboard</a>
-</body>
-</html>
+  </div>
+
+  <div class="mt-4 text-center">
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver al Dashboard</a>
+  </div>
+</div>
+{% endblock %}

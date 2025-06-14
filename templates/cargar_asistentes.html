@@ -1,13 +1,35 @@
-<!DOCTYPE html>
-<html>
-<head><title>Cargar Asistentes</title></head>
-<body>
-  <h2>Subir listado de asistentes (CSV)</h2>
-  <form method="POST" enctype="multipart/form-data">
-    <input type="file" name="archivo" accept=".csv" required>
-    <button type="submit">Subir</button>
+{% extends 'layout.html' %}
+
+{% block title %}Cargar Asistentes{% endblock %}
+
+{% block h1 %}Subir Listado de Asistentes <i class="fas fa-upload"></i> {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" enctype="multipart/form-data" class="p-4 bg-white shadow-sm rounded">
+    <div class="mb-3">
+      <label for="archivo" class="form-label">Selecciona archivo CSV</label>
+      <input type="file" name="archivo" class="form-control" accept=".csv" required>
+      <div class="form-text">Asegúrate de que el archivo tenga columnas <code>nombre</code>, <code>correo</code> y opcionalmente <code>ticket_id</code>.</div>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-file-upload"></i> Subir archivo</button>
   </form>
-  <br>
-  <a href="/dashboard">Volver al dashboard</a>
-</body>
-</html>
+
+  <div class="mt-4 text-center">
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver al Dashboard</a>
+  </div>
+</div>
+{% endblock %}

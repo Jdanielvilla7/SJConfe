@@ -2,10 +2,12 @@
 
 {% block title %}Casos Especiales{% endblock %}
 
+{% block h1 %}Registro de Casos Especiales <i class="fas fa-user-shield"></i> {% endblock %}
+
 {% block content %}
 <div class="container-fluid">
 
-  <h2 class="mb-4">📌 Registro de Casos Especiales</h2>
+  
 
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}

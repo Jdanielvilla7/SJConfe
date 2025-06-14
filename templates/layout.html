@@ -31,7 +31,8 @@
     </div>
 
     <h7 class="text-white mb-3"><i class="fas fa-bars me-2"></i> Menú</h7>
-    <a href="{{ url_for('routes.dashboard') }}" class="{% if request.endpoint == 'routes.dashboard' %}active{% endif %}">
+    <a href="{{ url_for('routes.dashboard') }}"
+      class="{% if request.endpoint == 'routes.dashboard' %}active{% endif %}">
       <i class="fas fa-home me-2"></i>Dashboard
     </a>
     <a href="{{ url_for('routes.checkout') }}" class="{% if request.endpoint == 'routes.checkout' %}active{% endif %}">
@@ -39,21 +40,26 @@
     </a>
 
     {% if session.get('rol') in ['admin', 'coord'] %}
-    <a href="{{ url_for('routes.casos_especiales') }}" class="{% if request.endpoint == 'routes.casos_especiales' %}active{% endif %}">
+    <a href="{{ url_for('routes.casos_especiales') }}"
+      class="{% if request.endpoint == 'routes.casos_especiales' %}active{% endif %}">
       <i class="fas fa-user-shield me-2"></i>Casos especiales
     </a>
     {% endif %}
     {% if session.get('rol') == 'admin' %}
-     <a href="{{ url_for('routes.cargar_asistentes') }}" class="{% if request.endpoint == 'routes.cargar_asistentes' %}active{% endif %}">
+    
+    <hr class="bg-white">
+    <a href="{{ url_for('routes.cargar_asistentes') }}"
+      class="{% if request.endpoint == 'routes.cargar_asistentes' %}active{% endif %}">
       <i class="fas fa-upload me-2"></i>Cargar información
     </a>
-    <a href="{{ url_for('routes.ver_asistentes') }}" class="{% if request.endpoint == 'routes.ver_asistentes' %}active{% endif %}">
+    <a href="{{ url_for('routes.ver_asistentes') }}"
+      class="{% if request.endpoint == 'routes.ver_asistentes' %}active{% endif %}">
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
     </a>
     {% endif %}
     <hr class="bg-white">
 
-    <a href="{{ url_for('routes.logout') }}">  <i class="fas fa-lock me-2"></i> Cerrar sesión</a>
+    <a href="{{ url_for('routes.logout') }}"> <i class="fas fa-lock me-2"></i> Cerrar sesión</a>
   </div>
 
   <!-- Contenido principal -->
@@ -69,7 +75,18 @@
         </div>
       </div>
     </nav>
-
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+    </div>
     {% block content %}{% endblock %}
   </div>
 

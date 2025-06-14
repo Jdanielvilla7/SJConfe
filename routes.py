@@ -59,8 +59,6 @@ def index():
 
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
- if 'user_id' not in session:
-        return redirect(url_for('routes.login'))
 @rol_requerido('admin')
 def registro():
     if request.method == 'POST':
