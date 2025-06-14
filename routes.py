@@ -59,7 +59,6 @@ def index():
 
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
-@rol_requerido('admin')
 def registro():
     if request.method == 'POST':
         username = request.form['username']
@@ -75,15 +74,27 @@ def registro():
 @routes.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = mongo.db.usuarios.find_one({'username': request.form['username']})
-        if user and check_password_hash(user['password'], request.form['password']):
-            usuario = Usuario(user)
-            session['user_id'] = usuario.get_id()
-            session['username'] = usuario.username
-            session['rol'] = usuario.rol
-            return redirect(url_for('routes.dashboard'))
-        flash('Usuario o contraseña incorrectos')
+        try:
+            username = request.form['username']
+            password = request.form['password']
+
+            user = mongo.db.usuarios.find_one({'username': username})
+
+            if user and check_password_hash(user['password'], password):
+                usuario = Usuario(user)
+                session['user_id'] = usuario.get_id()
+                session['username'] = usuario.username
+                session['rol'] = usuario.rol
+                return redirect(url_for('routes.dashboard'))
+
+            flash('Usuario o contraseña incorrectos', 'danger')
+
+        except Exception as e:
+            # Puedes loguear el error si quieres: print(e) o usar logging
+            flash(f'Ocurrió un error al intentar iniciar sesión: {str(e)}', 'danger')
+
     return render_template('login.html')
+
 
 # RUTA: Dashboard
 @routes.route('/dashboard')
