@@ -53,8 +53,15 @@ class Usuario:
 def load_user(user_id):
     return Usuario.get(user_id)
 
+@routes.route('/')
+def index():
+    return redirect(url_for('routes.login'))
+
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
+ if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+@rol_requerido('admin')
 def registro():
     if request.method == 'POST':
         username = request.form['username']
