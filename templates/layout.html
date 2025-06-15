@@ -101,11 +101,16 @@
   </script>
 
 </body>
+
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
-      .then(reg => console.log("Service Worker registrado:", reg))
-      .catch(err => console.warn("Error al registrar SW:", err));
+      .then(function(registration) {
+        console.log('Service Worker registrado con éxito:', registration);
+      })
+      .catch(function(error) {
+        console.log('Fallo en el registro del Service Worker:', error);
+      });
   }
 </script>
 
