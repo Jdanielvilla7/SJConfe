@@ -135,9 +135,11 @@
     }
 
     Html5Qrcode.getCameras().then(devices => {
+    const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
+
       if (devices.length) {
         html5QrCode.start(
-          devices[0].id,
+          { deviceId: { exact: backCamera.id } },
           { fps: 10, qrbox: 250 },
           onScanSuccess
         ).catch(err => console.error("Error al iniciar escáner:", err));
