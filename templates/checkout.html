@@ -120,11 +120,13 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
+    
     if (typeof Html5Qrcode === 'undefined') {
       alert("Error: no se pudo cargar el lector QR.");
       return;
     }
-
+    var myModal = new bootstrap.Modal(document.getElementById('resultadoModal'));
+    myModal.show();
     const html5QrCode = new Html5Qrcode("reader");
 
     function onScanSuccess(decodedText) {
