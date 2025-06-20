@@ -118,39 +118,15 @@
 <!-- Librería QR -->
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-{% if asistente%}
-<script>
-  const modal = new bootstrap.Modal(document.getElementById('resultadoModal'));
-  modal.show();
-</script>
-{% endif %}
-
 <script>
   document.addEventListener("DOMContentLoaded", () => {
+    
     if (typeof Html5Qrcode === 'undefined') {
       alert("Error: no se pudo cargar el lector QR.");
       return;
     }
-    
-  
+    var myModal = new bootstrap.Modal(document.getElementById('resultadoModal'));
     const html5QrCode = new Html5Qrcode("reader");
-    let currentCameraId = null;
-
-    function startScanner() {
-      Html5Qrcode.getCameras().then(devices => {
-        const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
-        currentCameraId = backCamera.id;
-
-        html5QrCode.start(
-          { deviceId: { exact: currentCameraId } },
-          { fps: 10, qrbox: 250 },
-          onScanSuccess
-        ).catch(err => console.error("Error al iniciar escáner:", err));
-      }).catch(err => {
-        alert("Error accediendo a la cámara.");
-        console.error("Error obteniendo cámaras:", err);
-      });
-    }
 
     function onScanSuccess(decodedText) {
       html5QrCode.stop().then(() => {
@@ -159,25 +135,24 @@
       });
     }
 
-    // Inicia el escáner al cargar la página
-    startScanner();
+    Html5Qrcode.getCameras().then(devices => {
+    const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
 
-    // Reinicia el escáner al cerrar el modal
-    const modalElement = document.getElementById('resultadoModal');
-    modalElement.addEventListener('hidden.bs.modal', () => {
-      if (!html5QrCode._isScanning) {
-        startScanner();
+      if (devices.length) {
+        html5QrCode.start(
+          { deviceId: { exact: backCamera.id } },
+          { fps: 10, qrbox: 250 },
+          onScanSuccess
+        ).catch(err => console.error("Error al iniciar escáner:", err));
+      } else {
+        alert("No se detectaron cámaras.");
       }
+    }).catch(err => {
+      alert("Error accediendo a la cámara.");
+      console.error("Error obteniendo cámaras:", err);
     });
   });
-
-  // Función usada por el botón "OK" del modal
-  function cerrarModal() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('resultadoModal'));
-    modal.hide();
-  }
 </script>
-
 
 
 {% endblock %}
