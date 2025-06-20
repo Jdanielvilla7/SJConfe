@@ -119,15 +119,15 @@
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
 <script>
+  let html5QrCode;
+
   document.addEventListener("DOMContentLoaded", () => {
-    
     if (typeof Html5Qrcode === 'undefined') {
       alert("Error: no se pudo cargar el lector QR.");
       return;
     }
-    var myModal = new bootstrap.Modal(document.getElementById('resultadoModal'));
-    myModal.show();
-    const html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode = new Html5Qrcode("reader");
 
     function onScanSuccess(decodedText) {
       html5QrCode.stop().then(() => {
@@ -136,8 +136,18 @@
       });
     }
 
+    startScanner();
+
+    // Al cerrar el modal, volver a activar el lector
+    const modal = new bootstrap.Modal(document.getElementById('resultadoModal'));
+    modal.addEventListener('hidden.bs.modal', () => {
+      startScanner();
+    });
+  });
+
+  function startScanner() {
     Html5Qrcode.getCameras().then(devices => {
-    const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
+      const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
 
       if (devices.length) {
         html5QrCode.start(
@@ -152,8 +162,16 @@
       alert("Error accediendo a la cámara.");
       console.error("Error obteniendo cámaras:", err);
     });
-  });
+  }
+
+  function cerrarModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('resultadoModal'));
+    modal.hide();
+  }
 </script>
 
 
 {% endblock %}
+
+
+
