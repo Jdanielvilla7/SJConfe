@@ -124,7 +124,7 @@
       alert("Error: no se pudo cargar el lector QR.");
       return;
     }
-
+  var myModal = new bootstrap.Modal(document.getElementById('resultadoModal'));
     const html5QrCode = new Html5Qrcode("reader");
     let currentCameraId = null;
 
