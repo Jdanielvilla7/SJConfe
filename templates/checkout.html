@@ -1,160 +1,234 @@
-{% extends "layout.html" %}
+  {% extends "layout.html" %}
 
-{% block title %}Check-in{% endblock %}
+  {% block title %}Check-in{% endblock %}
 
-{% block h1 %} Check-in <i class="fas fa-ticket me-2"></i>{% endblock %}
+  {% block h1 %} Check-in <i class="fas fa-ticket me-2"></i>{% endblock %}
 
-{% block content %}
-<div class="container-fluid">
+  {% block content %}
+  <div class="container-fluid">
 
-  <!-- Escaneo de QR -->
-  <div class="row">
-    <div class="col-md-6 mb-5">
-      <div class="card shadow-sm mb-4">
-  <div class="card-header bg-success text-white">
-    <h5 class="mb-0"> <i class="fas fa-qrcode me-2"></i> Escaneo de código QR</h5>
-  </div>
-  <div class="card-body text-center">
-    <div id="reader" style="width: 100%; max-width: 360px; height: 320px; margin: auto;"></div>
-    <form method="POST" id="form-checkin">
-      <input type="text" name="codigo_qr" id="codigo_qr_input" hidden required>
-    </form>
-  </div>
-</div>
-
+    <!-- Escaneo de QR -->
+    <div class="row">
+      <div class="col-md-4 mb-5">
+        <div class="card shadow-sm mb-4">
+    <div class="card-header bg-success text-white">
+      <h5 class="mb-0"> <i class="fas fa-qrcode me-2"></i> Escaneo de código QR</h5>
     </div>
+    <div class="card-body text-center">
+      <div id="reader" style="width: 100%; max-width: 360px; height: 320px; margin: auto;"></div>
+      <form method="POST" id="form-checkin">
+        <input type="text" name="codigo_qr" id="codigo_qr_input" hidden required>
+      </form>
+    </div>
+  </div>
 
-    <!-- Búsqueda manual -->
-    <div class="col-md-6 mb-5">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0"><i class="fa-solid fa-magnifying-glass"></i> Búsqueda manual</h5>
-        </div>
-        <div class="card-body">
-          <form method="POST" class="d-flex gap-2">
-            <input type="text" class="form-control" name="busqueda" placeholder="Nombre, correo o ticket ID" value="{{ query or '' }}" required>
-            <button type="submit" class="btn btn-primary">Buscar</button>
-          </form>
-
-          {% if resultados %}
-            <div class="table-responsive mt-4">
-              <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Ticket ID</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for asistente in resultados %}
-                  <tr>
-                    <td>{{ asistente.nombre }}</td>
-                    <td>{{ asistente.correo }}</td>
-                    <td>{{ asistente.ticket_id }}</td>
-                    <td>{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
-                    <td>
-                      {% if not asistente.checked_in %}
-                        <form method="POST" action="{{ url_for('routes.confirmar_checkin', id=asistente._id) }}">
-                          <button type="submit" class="btn btn-sm btn-success">Check-in</button>
-                        </form>
-                      {% else %}
-                        <span class="text-muted small">Registrado</span>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% elif query %}
-            <p class="mt-3 text-muted">No se encontraron resultados para "{{ query }}"</p>
-          {% endif %}
-        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Modal de resultado del QR -->
-  <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header bg-dark text-white">
-          <h5 class="modal-title">Resultado del Check-in</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body">
-          {% if asistente %}
-            <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
-            <p><strong>Correo:</strong> {{ asistente.correo }}</p>
-            <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
-            <p><strong>Estado:</strong>
-              {% if asistente.checked_in %}
-                ✅ Ya registrado el {{ asistente.timestamp_checkin.strftime('%d/%m/%Y %H:%M:%S') if asistente.timestamp_checkin else 'anteriormente' }}
-              {% else %}
-                🟢 Nuevo registro exitoso
-              {% endif %}
-            </p>
-            {% if asistente.registrado_por %}
-              <p><strong>Registrado por:</strong> {{ asistente.registrado_por }}</p>
+      <!-- Búsqueda manual -->
+      <div class="col-md-8 mb-5">
+        <div class="card shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fa-solid fa-magnifying-glass"></i> Búsqueda manual</h5>
+          </div>
+          <div class="card-body">
+            <form method="POST" class="d-flex gap-2" action="{{ url_for('routes.checkout')}}">
+              <input type="text" class="form-control" name="busqueda" placeholder="Nombre, correo o ticket ID" value="{{ query or '' }}" required>
+              <button type="submit" class="btn btn-primary">Buscar</button>
+            </form>
+             {{ mensaje}}
+             
+            {% if resultados %}
+              <div class="table-responsive mt-4">
+                <table class="table table-bordered table-sm">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Correo</th>
+                      <th>Ticket ID</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for asistente in resultados %}
+                    <tr>
+                      <td>{{ asistente.nombre }}</td>
+                      <td>{{ asistente.correo }}</td>
+                      <td>{{ asistente.ticket_id }}</td>
+                      <td>{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
+                      <td>
+                        {% if not asistente.checked_in %}
+                          <form method="POST" action="{{ url_for('routes.confirmar_checkin', id=asistente._id) }}">
+                            <button type="submit" class="btn btn-sm btn-success">Check-in</button>
+                          </form>
+                        {% else %}
+                          <span class="text-muted small">Registrado</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% elif query %}
+              <p class="mt-3 text-muted">No se encontraron resultados para "{{ query }}"</p>
             {% endif %}
-          {% elif mensaje %}
-            <p>{{ mensaje }}</p>
-          {% endif %}
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-success" onclick="cerrarModal()">OK</button>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Modal de resultado del QR -->
+    <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5 class="modal-title">Resultado del Check-in</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            {% if asistente %}
+              <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
+              <p><strong>Correo:</strong> {{ asistente.correo }}</p>
+              <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
+              <p><strong>Estado:</strong>
+                {{ mensaje}}
+              </p>
+              {% if asistente.registrado_por %}
+                <p><strong>Registrado por:</strong> {{ asistente.registrado_por }}</p>
+              {% endif %}
+            {% elif mensaje %}
+              <p>{{ mensaje }}</p>
+            {% endif %}
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-success" onclick="cerrarModal()">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-</div>
+  <!-- Script para QR -->
 
-<!-- Script para QR -->
+  <!-- Librería QR -->
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-<!-- Librería QR -->
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
-<script>
+ <script>
+   function cerrarModal() {
+      const modalElement = document.getElementById('resultadoModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+      modalInstance.hide();
+    }
   document.addEventListener("DOMContentLoaded", () => {
-    
+     function cerrarModal() {
+      const modalElement = document.getElementById('resultadoModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+      modalInstance.hide();
+    }
     if (typeof Html5Qrcode === 'undefined') {
       alert("Error: no se pudo cargar el lector QR.");
       return;
     }
-    var myModal = new bootstrap.Modal(document.getElementById('resultadoModal'));
-    myModal.show();
-    const html5QrCode = new Html5Qrcode("reader");
 
-    function onScanSuccess(decodedText) {
-      html5QrCode.stop().then(() => {
-        document.getElementById('codigo_qr_input').value = decodedText;
-        document.getElementById('form-checkin').submit();
+    const html5QrCode = new Html5Qrcode("reader");
+    let currentCameraId = null;
+    let isScannerRunning = false;
+    
+    const modalElement = document.getElementById('resultadoModal');
+    const modalBody = modalElement.querySelector('.modal-body');
+    const bootstrapModal = new bootstrap.Modal(modalElement);
+
+    function startScanner() {
+      Html5Qrcode.getCameras().then(devices => {
+        const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
+        currentCameraId = backCamera.id;
+
+        html5QrCode.start(
+          { deviceId: { exact: currentCameraId } },
+          { fps: 10, qrbox: 250 },
+          onScanSuccess).then(()=> {
+            isScannerRunning = true
+          }).catch(err => console.error("Error al iniciar escáner:", err));
+      }).catch(err => {
+        alert("Error accediendo a la cámara.");
+        console.error("Error obteniendo cámaras:", err);
       });
     }
 
-    Html5Qrcode.getCameras().then(devices => {
-    const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
+    async function onScanSuccess(decodedText) {
+      await html5QrCode.stop().then(() => {
+          isScannerRunning = false;
+      });
+      
+      // Enviar QR al servidor sin recargar
+      const formData = new FormData();
+      formData.append("codigo_qr", decodedText);
 
-      if (devices.length) {
-        html5QrCode.start(
-          { deviceId: { exact: backCamera.id } },
-          { fps: 10, qrbox: 250 },
-          onScanSuccess
-        ).catch(err => console.error("Error al iniciar escáner:", err));
+      const response = await fetch("{{ url_for('routes.checkout') }}", {
+        method: "POST",
+        body: formData,
+      });
+
+      const html = await response.text();
+
+      // Parsear la respuesta y extraer solo el modal
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const newModalBody = doc.querySelector("#resultadoModal .modal-body");
+
+      if (newModalBody) {
+        modalBody.innerHTML = newModalBody.innerHTML;
+        bootstrapModal.show();
       } else {
-        alert("No se detectaron cámaras.");
+        modalBody.innerHTML = "<p>⚠️ Error al procesar el QR.</p>";
+        bootstrapModal.show();
       }
-    }).catch(err => {
-      alert("Error accediendo a la cámara.");
-      console.error("Error obteniendo cámaras:", err);
+    }
+
+    // Cuando cierra el modal, reinicia escáner
+    modalElement.addEventListener("hidden.bs.modal", () => {
+      if (!isScannerRunning) {
+        startScanner();
+      }
     });
+
+    if (!isScannerRunning) {
+        startScanner();
+      }
   });
 </script>
 
+{% if asistente%}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+      
+      
+      const modalElement = document.getElementById('resultadoModal');
+      const modalBody = modalElement.querySelector('.modal-body');
+      const bootstrapModal = new bootstrap.Modal(modalElement);
+      
+      const html = document.documentElement.outerHTML;
 
+      // Parsear la respuesta y extraer solo el modal
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const newModalBody = doc.querySelector("#resultadoModal .modal-body");
+
+      if (newModalBody) {
+        modalBody.innerHTML = newModalBody.innerHTML;
+        bootstrapModal.show();
+      } else {
+        modalBody.innerHTML = "<p>⚠️ Error al procesar solicitud.</p>";
+        bootstrapModal.show();
+      }
+    
+
+
+   
+});
+</script>
+{% endif %}
 {% endblock %}
 

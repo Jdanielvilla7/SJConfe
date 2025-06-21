@@ -244,7 +244,7 @@ def checkout():
 
                     if asistente:
                         if asistente.get('checked_in'):
-                            mensaje = f'⚠️ Ya registrado el {asistente.get("timestamp_checkin")}'
+                            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
                         else:
                             mongo.db.asistentes.update_one(
                                 {'_id': asistente['_id']},
@@ -264,6 +264,7 @@ def checkout():
                 mensaje = f'Error al leer QR: {str(e)}'
 
         elif 'busqueda' in request.form:
+            
             query = request.form.get('busqueda', '').strip()
             if query:
                 resultados = list(mongo.db.asistentes.find({
@@ -273,7 +274,7 @@ def checkout():
                         {'ticket_id': query}
                     ]
                 }))
-
+                print(resultados)
     return render_template('checkout.html', asistente=asistente, mensaje=mensaje,
                            resultados=resultados, query=query)
 
@@ -283,66 +284,80 @@ def checkin_manual():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
 
-    resultados = []
+    asistentes = []
     query = None
 
     if request.method == 'POST':
         query = request.form.get('busqueda', '').strip()
-
+        print(query)
         if query:
-            resultados = list(mongo.db.asistentes.find({
+            asistentes = list(mongo.db.asistentes.find({
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
             }))
-
-    return render_template('checkin_manual.html', resultados=resultados, query=query)
+    print(asistentes)
+    return render_template('asistentes.html', asistentes=asistentes, query=query)
     
 @routes.route('/checkin_manual/<id>', methods=['POST'])
 def confirmar_checkin_manual(id):
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
+    
+    mensaje = None
 
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
-    if asistente and not asistente.get('checked_in'):
-        mongo.db.asistentes.update_one(
-            {'_id': ObjectId(id)},
-            {'$set': {
-                'checked_in': True,
-                'timestamp_checkin': datetime.utcnow(),
-                'registrado_por': session.get('username', 'desconocido')
-            }}
-        )
-        flash('Check-in manual realizado correctamente.')
+    if asistente:
+        if asistente.get('checked_in'):
+            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+        else:
+            mongo.db.asistentes.update_one(
+                {'_id': ObjectId(id)},
+                {'$set': {
+                    'checked_in': True,
+                    'timestamp_checkin': datetime.utcnow(),
+                    'registrado_por': session.get('username', 'desconocido')
+                }}
+            )
+            mensaje = '✅ Asistente registrado exitosamente.'
     else:
-        flash('El asistente ya estaba registrado o no se encontró.')
+        mensaje = '❌ El asistente ya estaba registrado o no se encontró.'
 
-    return redirect(url_for('routes.checkin_manual'))
+    return render_template('checkout.html', asistente=asistente, mensaje=mensaje)
+                           
 
 @routes.route('/confirmar_checkin/<id>', methods=['POST'])
 def confirmar_checkin(id):
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
-
+   
+    asistente = None
+    mensaje = None
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
-    if asistente and not asistente.get('checked_in'):
-        mongo.db.asistentes.update_one(
-            {'_id': ObjectId(id)},
-            {'$set': {
-                'checked_in': True,
-                'timestamp_checkin': datetime.utcnow(),
-                'registrado_por': session.get('username', 'desconocido')
-            }}
-        )
-        flash('Check-in realizado correctamente.')
+    if asistente:
+        if asistente.get('checked_in'):
+            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+        else:
+            mongo.db.asistentes.update_one(
+                {'_id': ObjectId(id)},
+                {'$set': {
+                    'checked_in': True,
+                    'timestamp_checkin': datetime.utcnow(),
+                    'registrado_por': session.get('username', 'desconocido')
+                }}
+            )
+            asistente['checked_in'] = True
+            mensaje = '✅ Asistente registrado exitosamente.'
     else:
-        flash('Ya estaba registrado o no se encontró.')
+        mensaje = '❌ El asistente ya estaba registrado o no se encontró.'
 
-    return redirect(url_for('routes.checkout'))
+    print(mensaje)
+    return render_template('checkout.html', asistente=asistente, mensaje=mensaje)
+
     
 @routes.app_errorhandler(403)
 def acceso_prohibido(e):

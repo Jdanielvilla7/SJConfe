@@ -8,9 +8,9 @@
 <div class="container mt-4">
   
 
-  <form method="GET" class="mb-4">
+  <form method="POST" class="mb-4" action="{{ url_for('routes.checkin_manual')}}">
     <div class="input-group">
-      <input type="text" name="busqueda" class="form-control" placeholder="Buscar por nombre, correo o ticket..." value="{{ request.args.get('busqueda', '') }}">
+      <input type="text" name="busqueda" class="form-control" placeholder="Buscar por nombre, correo o ticket..." value="{{ query }}">
       <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button>
     </div>
   </form>
