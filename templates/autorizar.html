@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+
+{% block title %}Autorizar Casos Especiales{% endblock %}
+
+{% block h1 %}Autorización de Casos Especiales <i class="fas fa-user-check"></i>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+  <div id="alert-placeholder"></div>
+
+  {% if casos %}
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark text-white">
+      Casos Pendientes por Autorizar
+    </div>
+    <div class="card-body table-responsive">
+      <table class="table table-bordered table-sm align-middle" id="tabla-casos">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Ticket ID</th>
+            <th>Código</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for caso in casos %}
+          <tr id="caso-{{ caso._id }}">
+            <td>{{ caso.registrado_en.strftime('%d/%m/%Y %H:%M') if caso.registrado_en else '' }}</td>
+            <td>{{ caso.nombre }}</td>
+            <td>{{ caso.descripcion }}</td>
+            <td>{{ caso.ticket_id or '—' }}</td>
+            <td>{{ caso.codigo_autorizacion or '—' }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-success btn-accion" data-id="{{ caso._id }}" data-accion="autorizado">Autorizar</button>
+                <button class="btn btn-sm btn-danger btn-accion" data-id="{{ caso._id }}" data-accion="rechazado">Rechazar</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+    <div class="alert alert-info">No hay casos pendientes por autorizar.</div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('.btn-accion').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      const casoId = e.target.getAttribute('data-id');
+      const accion = e.target.getAttribute('data-accion');
+
+      try {
+        const res = await fetch(`/autorizar-caso/${casoId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById(`caso-${casoId}`).remove();
+          mostrarAlerta('success', data.message);
+        } else {
+          mostrarAlerta('danger', data.message);
+        }
+      } catch (err) {
+        mostrarAlerta('danger', 'Error al procesar la solicitud.');
+      }
+    });
+  });
+
+  function mostrarAlerta(tipo, mensaje) {
+    const alert = `
+      <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>`;
+    document.getElementById('alert-placeholder').innerHTML = alert;
+  }
+</script>
+{% endblock %}

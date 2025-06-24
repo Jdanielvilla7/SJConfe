@@ -15,6 +15,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
 
 </head>
@@ -112,7 +114,66 @@
       .catch(function(error) {
         console.log('Fallo en el registro del Service Worker:', error);
       });
+      }
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register("{{ url_for('static', filename='firebase-messaging-sw.js') }}")
+      .then((registration) => {
+        console.log('Service Worker registrado:', registration);
+      })
+      .catch((error) => {
+        console.error('Fallo en el registro del Service Worker:', error);
+      });
   }
 </script>
+{% raw %}
+
+<script>
+  firebase.initializeApp({
+  apiKey: "AIzaSyC5jWT-1bUL_IjHLs7xpTdcKRNLZpbn-oM",
+  authDomain: "sjconfe-e9f07.firebaseapp.com",
+  projectId: "sjconfe-e9f07",
+  storageBucket: "jconfe-e9f07.firebasestorage.app",
+  messagingSenderId: "595583890328",
+  appId: "1:595583890328:web:14598da6a5be3493f531ed"
+});
+ if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const messaging = firebase.messaging();
+
+  
+
+   function solicitarTokenNotificaciones() {
+        Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          messaging.getToken({ vapidKey: 'BFFbqMhgq6AOnAPS2z87qlFwF65mt1dV6WjEtZZuuzHrDn2da1FIdcPeHnjccfE25KkeYomDk2MVrysY0IuFWsc' })
+            .then((currentToken) => {
+              if (currentToken) {
+                console.log("Token obtenido:", currentToken);
+                // Envía el token a tu backend
+                
+              } else {
+                console.log("No se pudo obtener token.");
+              }
+            })
+            .catch((err) => {
+              console.error("Error al obtener el token:", err);
+            });
+        } else {
+          console.log("Permiso de notificación denegado");
+        }
+      });
+  
+  }
+
+  // Ejecutarlo al cargar la página si el usuario está autenticado
+  document.addEventListener('DOMContentLoaded', () => {
+    solicitarTokenNotificaciones();
+  });
+</script>
+{% endraw %}
 
 </html>

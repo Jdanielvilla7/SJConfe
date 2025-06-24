@@ -1,20 +1,31 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session, flash
+from flask import Blueprint, render_template, redirect, url_for, request, session, flash, jsonify, sessions,current_app
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
+from datetime import datetime
+
+
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, messaging
 import pandas as pd
 import os
 
 from extensions import mongo, app
-
+from functools import wraps
+from flask import abort
 
 routes = Blueprint('routes', __name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'routes.login'
 
-from functools import wraps
-from flask import abort
+
+
+# Ruta para el service worker de Firebase
+@routes.route('/firebase-messaging-sw.js')
+def sw():
+    return current_app.send_static_file('firebase-messaging-sw.js')
 
 def rol_requerido(rol_permitido):
     def decorador(f):
@@ -55,15 +66,18 @@ def load_user(user_id):
 
 @routes.route('/')
 def index():
+    print("llega")
     return redirect(url_for('routes.login'))
 
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
+        nombre=request.form['name']
         username = request.form['username']
         password = generate_password_hash(request.form['password'])
-        rol = request.form.get('rol', 'staff')  # staff por defecto
+        rol = request.form.get('rol', 'staff','coordinator')  # staff por defecto
+        autoriza=0
         mongo.db.usuarios.insert_one({'username': username, 'password': password, 'rol': rol})
         flash('Usuario creado correctamente.')
         return redirect(url_for('routes.login'))
@@ -358,33 +372,123 @@ def confirmar_checkin(id):
     print(mensaje)
     return render_template('checkout.html', asistente=asistente, mensaje=mensaje)
 
-    
-@routes.app_errorhandler(403)
-def acceso_prohibido(e):
-    return render_template('403.html'), 403
+
+# Inicializar Firebase una sola vez
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase-key.json")
+    firebase_admin.initialize_app(cred)
+
 
 @routes.route('/casos-especiales', methods=['GET', 'POST'])
 def casos_especiales():
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    casos = list(mongo.db.casos_especiales.find().sort('registrado_en', -1))
+
     if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        autorizado_por = request.form.get('autorizado_por')
-        descripcion = request.form.get('descripcion')
-        ticket_id = request.form.get('ticket_id') or None
-        codigo_autorizacion = request.form.get('codigo_autorizacion') or None
+        form = request.form
+        nuevo_caso = {
+            "nombre": form['nombre'],
+            "autorizado_por": form['autorizado_por'],
+            "descripcion": form['descripcion'],
+            "ticket_id": form.get('ticket_id') or None,
+            "codigo_autorizacion": form.get('codigo_autorizacion') or None,
+            "estado": "solicitado",
+            "registrado_en": datetime.utcnow()
+        }
 
-        if not nombre or not autorizado_por or not descripcion:
-            flash('Todos los campos obligatorios deben estar completos.', 'danger')
-        else:
-            mongo.db.casos.insert_one({
-                'nombre': nombre,
-                'autorizado_por': autorizado_por,
-                'descripcion': descripcion,
-                'ticket_id': ticket_id,
-                'codigo_autorizacion': codigo_autorizacion,
-                'registrado_en': datetime.utcnow()
-            })
-            flash('Caso especial registrado exitosamente.', 'success')
-            return redirect(url_for('routes.casos_especiales'))
+        try:
+            mongo.db.casos_especiales.insert_one(nuevo_caso)
+            flash('Caso especial registrado correctamente.', 'success')
+            notificar_autorizador(form['autorizado_por'], nuevo_caso)
+        except Exception as e:
+            flash(f'Error al registrar el caso: {e}', 'danger')
 
-    casos = list(mongo.db.casos.find().sort('registrado_en', -1))
+        return redirect(url_for('routes.casos_especiales'))
+
     return render_template('casos_especiales.html', casos=casos)
+
+
+
+# Nueva función de notificación con Firebase Admin SDK
+def notificar_autorizador(nombre_autorizador, caso_data):
+    usuario = mongo.db.usuarios.find_one({
+        'username': nombre_autorizador,
+        'autoriza': True
+    })
+
+    if usuario and usuario.get('fcm_token'):
+        mensaje = f"Nuevo caso especial para autorizar:\nAsistente: {caso_data['nombre']}\nMotivo: {caso_data['descripcion']}"
+
+        try:
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title="Solicitud de Autorización",
+                    body=mensaje
+                ),
+                token=usuario['fcm_token'],
+                data={
+                    'tipo': 'caso_especial',
+                    'ticket_id': caso_data.get('ticket_id', ''),
+                    'codigo_autorizacion': caso_data.get('codigo_autorizacion', ''),
+                    'nombre': caso_data['nombre']
+                }
+            )
+            response = messaging.send(message)
+            print("Mensaje enviado correctamente:", response)
+        except Exception as e:
+            print("Error al enviar la notificación:", e)
+
+
+@routes.route('/guardar_token', methods=['POST'])
+def guardar_token():
+    print('entra')
+    if 'user_id' not in session:
+        return jsonify({'error': 'Usuario no autenticado'}), 401
+
+    data = request.get_json()
+    token = data.get('token')
+    print(token)
+    if token:
+        result = mongo.db.usuarios.update_one(
+            {'_id': ObjectId(session['user_id'])},
+            {'$set': {'token_fcm': token}}
+        )
+        return jsonify({'mensaje': 'Token guardado', 'modificado': result.modified_count})
+    else:
+        return jsonify({'error': 'Token inválido'}), 400
+
+@routes.route('/autorizar', methods=['GET', 'POST'])
+def autorizar():
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    usuario_actual = mongo.db.usuarios.find_one({'_id': ObjectId(session['user_id'])})
+
+    # Verifica que sea autorizador
+    if not usuario_actual or not usuario_actual.get('autoriza'):
+        flash("No tienes permisos para acceder a esta página", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    if request.method == 'POST':
+        caso_id = request.form.get('caso_id')
+        accion = request.form.get('accion')
+
+        if caso_id and accion in ['autorizado', 'rechazado']:
+            mongo.db.casos_especiales.update_one(
+                {'_id': ObjectId(caso_id)},
+                {
+                    '$set': {
+                        'estado': accion,
+                        'autorizado_por': usuario_actual.get('nombre'),
+                        'autorizado_en': datetime.utcnow()
+                    }
+                }
+            )
+            flash(f'Caso {accion} correctamente.', 'success')
+            return redirect(url_for('routes.autorizar'))
+
+    casos_pendientes = list(mongo.db.casos_especiales.find({'estado': 'solicitado'}))
+
+    return render_template('autorizar.html', casos=casos_pendientes, usuario=usuario_actual)
