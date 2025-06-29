@@ -412,7 +412,6 @@ def casos_especiales():
         except Exception as e:
             flash(f'Error al registrar el caso: {e}', 'danger')
 
-        return redirect(url_for('routes.casos_especiales'))
 
     return render_template('casos_especiales.html', casos=casos, autorizadores=autorizadores)
 
