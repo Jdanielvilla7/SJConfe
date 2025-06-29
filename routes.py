@@ -391,8 +391,9 @@ def casos_especiales():
 
     casos = list(mongo.db.casos_especiales.find().sort('registrado_en', -1))
     autorizadores = list(mongo.db.usuarios.find({"autoriza": 1}))
-
+    
     if request.method == 'POST':
+        print("Llamada a guardar el caso")
         form = request.form
         nuevo_caso = {
             "nombre": form['nombre'],
