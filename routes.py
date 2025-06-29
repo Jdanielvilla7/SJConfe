@@ -433,7 +433,7 @@ def notificar_autorizador(nombre_autorizador, caso_data):
                     title="Solicitud de Autorización",
                     body=mensaje
                 ),
-                token=usuario['fcm_token'],
+                token=usuario['token_fcm'],
                 data={
                     'tipo': 'caso_especial',
                     'ticket_id': caso_data.get('ticket_id', ''),
