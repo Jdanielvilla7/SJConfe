@@ -385,6 +385,7 @@ def casos_especiales():
         return redirect(url_for('routes.login'))
 
     casos = list(mongo.db.casos_especiales.find().sort('registrado_en', -1))
+    autorizadores = list(mongo.db.usuarios.find({"autoriza": 1}))
 
     if request.method == 'POST':
         form = request.form
@@ -407,7 +408,7 @@ def casos_especiales():
 
         return redirect(url_for('routes.casos_especiales'))
 
-    return render_template('casos_especiales.html', casos=casos)
+    return render_template('casos_especiales.html', casos=casos, autorizadores=autorizadores)
 
 
 
@@ -492,3 +493,4 @@ def autorizar():
     casos_pendientes = list(mongo.db.casos_especiales.find({'estado': 'solicitado'}))
 
     return render_template('autorizar.html', casos=casos_pendientes, usuario=usuario_actual)
+

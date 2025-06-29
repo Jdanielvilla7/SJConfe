@@ -153,17 +153,21 @@
             .then((currentToken) => {
               if (currentToken) {
                 console.log("Token obtenido:", currentToken);
+                print("Token obtenido:", currentToken)
                 // Envía el token a tu backend
                 
               } else {
                 console.log("No se pudo obtener token.");
+                print("No se pudo obtener token.");
               }
             })
             .catch((err) => {
               console.error("Error al obtener el token:", err);
+              print("Error al obtener el token:", err);
             });
         } else {
           console.log("Permiso de notificación denegado");
+          print("Permiso de notificación denegado");
         }
       });
   

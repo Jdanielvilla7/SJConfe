@@ -12,6 +12,7 @@ app.config['MONGO_URI'] = os.environ.get('MONGO_URI')
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
+
 mongo = PyMongo(app)
 
 try:
