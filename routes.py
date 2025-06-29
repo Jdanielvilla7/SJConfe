@@ -14,6 +14,12 @@ import os
 from extensions import mongo, app
 from functools import wraps
 from flask import abort
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
 
 routes = Blueprint('routes', __name__)
 login_manager = LoginManager()
@@ -493,3 +499,18 @@ def autorizar():
 
     return render_template('autorizar.html', casos=casos_pendientes, usuario=usuario_actual)
 
+@routes.route('/log-front', methods=['POST'])
+def log_front():
+    data = request.json
+    mensaje = data.get('mensaje')
+    nivel = data.get('nivel', 'info')
+
+    if mensaje:
+        if nivel == 'error':
+            logging.error(f"[JS] {mensaje}")
+        elif nivel == 'warning':
+            logging.warning(f"[JS] {mensaje}")
+        else:
+            logging.info(f"[JS] {mensaje}")
+        return jsonify({"status": "ok"}), 200
+    return jsonify({"status": "missing message"}), 400

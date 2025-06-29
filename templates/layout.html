@@ -148,10 +148,13 @@
 
    function solicitarTokenNotificaciones() {
         Notification.requestPermission().then((permission) => {
+          logDesdeFrontend("Iniciando prueba");
         if (permission === 'granted') {
           messaging.getToken({ vapidKey: 'BFFbqMhgq6AOnAPS2z87qlFwF65mt1dV6WjEtZZuuzHrDn2da1FIdcPeHnjccfE25KkeYomDk2MVrysY0IuFWsc' })
             .then((currentToken) => {
               if (currentToken) {
+                logDesdeFrontend("Token obtenido");
+                logDesdeFrontend(currentToken);
                 console.log("Token obtenido:", currentToken);
                 fetch('/guardar_token', {
                     method: 'POST',
@@ -159,19 +162,22 @@
                     body: JSON.stringify({ token })
                   });
                 
-                
               } else {
                 console.log("No se pudo obtener token.");
+                logDesdeFrontend("No se pudo obtener Token","error");
                 
               }
             })
             .catch((err) => {
               console.error("Error al obtener el token:", err);
+              logDesdeFrontend("Error al obtener Token","error");
+              logDesdeFrontend(err,"error");
               
             });
         } else {
           console.log("Permiso de notificación denegado");
           
+        logDesdeFrontend("Permiso de notificación denegado");
         }
       });
   
@@ -181,6 +187,16 @@
   document.addEventListener('DOMContentLoaded', () => {
     solicitarTokenNotificaciones();
   });
+
+  function logDesdeFrontend(mensaje, nivel = 'info') {
+  fetch('/log-front', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mensaje: mensaje, nivel: nivel })
+  }).catch(err => {
+    console.warn('Fallo al enviar log al servidor:', err);
+  });
+  }
 </script>
 {% endraw %}
 
