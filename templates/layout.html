@@ -105,17 +105,7 @@
 
 </body>
 
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
-      .then(function(registration) {
-        console.log('Service Worker registrado con éxito:', registration);
-      })
-      .catch(function(error) {
-        console.log('Fallo en el registro del Service Worker:', error);
-      });
-      }
-</script>
+
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register("{{ url_for('static', filename='firebase-messaging-sw.js') }}")
@@ -130,21 +120,20 @@
 {% raw %}
 
 <script>
-  firebase.initializeApp({
-  apiKey: "AIzaSyC5jWT-1bUL_IjHLs7xpTdcKRNLZpbn-oM",
-  authDomain: "sjconfe-e9f07.firebaseapp.com",
-  projectId: "sjconfe-e9f07",
-  storageBucket: "jconfe-e9f07.firebasestorage.app",
-  messagingSenderId: "595583890328",
-  appId: "1:595583890328:web:14598da6a5be3493f531ed"
-});
- if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
+      const firebaseConfig = {
+      apiKey: "AIzaSyC5jWT-1bUL_IjHLs7xpTdcKRNLZpbn-oM",
+      authDomain: "sjconfe-e9f07.firebaseapp.com",
+      projectId: "sjconfe-e9f07",
+      storageBucket: "jconfe-e9f07.firebasestorage.app",
+      messagingSenderId: "595583890328",
+      appId: "1:595583890328:web:14598da6a5be3493f531ed"
+    };
 
-  const messaging = firebase.messaging();
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
 
-  
+    const messaging = firebase.messaging();
 
    function solicitarTokenNotificaciones() {
         Notification.requestPermission().then((permission) => {
