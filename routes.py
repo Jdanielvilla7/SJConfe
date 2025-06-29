@@ -454,7 +454,7 @@ def guardar_token():
         return jsonify({'error': 'Usuario no autenticado'}), 401
 
     data = request.get_json()
-    token = data.get('token')
+    token = data.get('currentToken')
     print(token)
     if token:
         result = mongo.db.usuarios.update_one(
