@@ -60,6 +60,13 @@
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
     </a>
     {% endif %}
+      {% if session.get('autoriza') == 1 %}
+    
+    <hr class="bg-white">
+    <a href="{{ url_for('routes.autorizar') }}"
+      class="{% if request.endpoint == 'routes.autorizar' %}active{% endif %}">
+      <i class="fas fa-upload me-2"></i>Autorizar Casos
+    {% endif %}
     <hr class="bg-white">
 
     <a href="{{ url_for('routes.logout') }}"> <i class="fas fa-lock me-2"></i> Cerrar sesión</a>
