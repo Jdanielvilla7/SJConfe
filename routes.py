@@ -66,7 +66,6 @@ def load_user(user_id):
 
 @routes.route('/')
 def index():
-    print("llega")
     return redirect(url_for('routes.login'))
 
 # RUTA: Registro
