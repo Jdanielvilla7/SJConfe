@@ -153,7 +153,7 @@
           messaging.getToken({ vapidKey: 'BFFbqMhgq6AOnAPS2z87qlFwF65mt1dV6WjEtZZuuzHrDn2da1FIdcPeHnjccfE25KkeYomDk2MVrysY0IuFWsc' })
             .then((currentToken) => {
               if (currentToken) {
-                logDesdeFrontend("Token obtenido");
+                
                 logDesdeFrontend(currentToken);
                 console.log("Token obtenido:", currentToken);
                 fetch('/guardar_token', {
@@ -172,13 +172,13 @@
             .catch((err) => {
               console.error("Error al obtener el token:", err);
               logDesdeFrontend("Error al obtener Token","error");
-              logDesdeFrontend(err,"error");
+    
               
             });
         } else {
           console.log("Permiso de notificación denegado");
           
-        logDesdeFrontend("Permiso de notificación denegado");
+        
         }
       });
   

@@ -421,10 +421,10 @@ def casos_especiales():
 def notificar_autorizador(nombre_autorizador, caso_data):
     usuario = mongo.db.usuarios.find_one({
         'username': nombre_autorizador,
-        'autoriza': True
+        'autoriza': 1
     })
-
-    if usuario and usuario.get('fcm_token'):
+    print(usuario)
+    if usuario and usuario.get('token_fcm'):
         mensaje = f"Nuevo caso especial para autorizar:\nAsistente: {caso_data['nombre']}\nMotivo: {caso_data['descripcion']}"
 
         try:
