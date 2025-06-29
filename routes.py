@@ -426,7 +426,7 @@ def notificar_autorizador(nombre_autorizador, caso_data):
     print(usuario)
     if usuario and usuario.get('token_fcm'):
         mensaje = f"Nuevo caso especial para autorizar:\nAsistente: {caso_data['nombre']}\nMotivo: {caso_data['descripcion']}"
-
+        print(mensaje)
         try:
             message = messaging.Message(
                 notification=messaging.Notification(
@@ -436,9 +436,9 @@ def notificar_autorizador(nombre_autorizador, caso_data):
                 token=usuario['token_fcm'],
                 data={
                     'tipo': 'caso_especial',
-                    'ticket_id': caso_data.get('ticket_id', ''),
-                    'codigo_autorizacion': caso_data.get('codigo_autorizacion', ''),
-                    'nombre': caso_data['nombre']
+                    'ticket_id': str(caso_data.get('ticket_id') or ''),
+                    'codigo_autorizacion': str(caso_data.get('codigo_autorizacion') or ''),
+                    'nombre': str(caso_data.get('nombre') or '')
                 }
             )
             response = messaging.send(message)
