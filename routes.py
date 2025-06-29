@@ -49,6 +49,7 @@ class Usuario:
     def __init__(self, user_data):
         self.id = str(user_data['_id'])
         self.username = user_data['username']
+        self.autoriza = user_data['autoriza']
         self.password_hash = user_data['password']
         self.rol = user_data.get('rol', 'staff')  # Por defecto, 'staff'
 
@@ -63,8 +64,6 @@ class Usuario:
         user_data = mongo.db.usuarios.find_one({'_id': ObjectId(user_id)})
         return Usuario(user_data) if user_data else None
 
-        user_data = mongo.db.usuarios.find_one({'_id': ObjectId(user_id)})
-        return Usuario(user_data) if user_data else None
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -81,9 +80,10 @@ def registro():
         nombre=request.form['name']
         username = request.form['username']
         password = generate_password_hash(request.form['password'])
-        rol = request.form.get('rol', 'staff','coordinator')  # staff por defecto
-        autoriza=0
-        mongo.db.usuarios.insert_one({'username': username, 'password': password, 'rol': rol})
+        rol = request.form.get('rol', 'staff')  
+        autoriza = 0
+        token_fcm = ''
+        mongo.db.usuarios.insert_one({'username': username, 'password': password, 'rol': rol,'token_fcm':token_fcm,'autoriza':autoriza})
         flash('Usuario creado correctamente.')
         return redirect(url_for('routes.login'))
     return render_template('registro.html')
