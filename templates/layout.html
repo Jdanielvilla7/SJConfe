@@ -60,12 +60,13 @@
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
     </a>
     {% endif %}
-      {% if session.get('autoriza') == 1 %}
+      {% if session.get('autoriza')==1 %}
     
     <hr class="bg-white">
     <a href="{{ url_for('routes.autorizar') }}"
       class="{% if request.endpoint == 'routes.autorizar' %}active{% endif %}">
       <i class="fas fa-upload me-2"></i>Autorizar Casos
+      </a>
     {% endif %}
     <hr class="bg-white">
 
@@ -188,13 +189,15 @@
   function logDesdeFrontend(mensaje, nivel = 'info') {
   fetch('/log-front', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },    
     body: JSON.stringify({ mensaje: mensaje, nivel: nivel })
   }).catch(err => {
     console.warn('Fallo al enviar log al servidor:', err);
-  });
+  }); document.getElementById('form-autorizar')
   }
+   
 </script>
 {% endraw %}
 
 </html>
+

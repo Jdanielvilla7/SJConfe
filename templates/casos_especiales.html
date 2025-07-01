@@ -83,7 +83,9 @@
             <td>
               {% if caso.estado == 'Autorizado' %}
               ✅ Autorizado
-              {% elif caso.estado == 'En revisión' %}
+              {% elif caso.estado == 'Rechazado' %}
+              ❌ Rechazado
+               {% elif caso.estado == 'En revisión' %}
               ⏳ En revisión
               {% else %}
               📝 Solicitado

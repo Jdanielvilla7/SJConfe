@@ -8,7 +8,7 @@
 <div class="container-fluid">
 
   <div id="alert-placeholder"></div>
-
+ 
   {% if casos %}
   <div class="card shadow-sm">
     <div class="card-header bg-dark text-white">
@@ -35,9 +35,10 @@
             <td>{{ caso.ticket_id or '—' }}</td>
             <td>{{ caso.codigo_autorizacion or '—' }}</td>
             <td>
-              <div class="d-flex gap-1">
-                <button class="btn btn-sm btn-success btn-accion" data-id="{{ caso._id }}" data-accion="autorizado">Autorizar</button>
-                <button class="btn btn-sm btn-danger btn-accion" data-id="{{ caso._id }}" data-accion="rechazado">Rechazar</button>
+              <div class="d-flex gap-1">                
+                <a href="{{ url_for('routes.ver_caso', caso_id=caso._id) }}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-eye"></i> Ver
+                </a>
               </div>
             </td>
           </tr>
@@ -53,39 +54,5 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-  document.querySelectorAll('.btn-accion').forEach(btn => {
-    btn.addEventListener('click', async e => {
-      const casoId = e.target.getAttribute('data-id');
-      const accion = e.target.getAttribute('data-accion');
 
-      try {
-        const res = await fetch(`/autorizar-caso/${casoId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accion })
-        });
-        const data = await res.json();
-        if (data.success) {
-          document.getElementById(`caso-${casoId}`).remove();
-          mostrarAlerta('success', data.message);
-        } else {
-          mostrarAlerta('danger', data.message);
-        }
-      } catch (err) {
-        mostrarAlerta('danger', 'Error al procesar la solicitud.');
-      }
-    });
-  });
 
-  function mostrarAlerta(tipo, mensaje) {
-    const alert = `
-      <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
-        ${mensaje}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-      </div>`;
-    document.getElementById('alert-placeholder').innerHTML = alert;
-  }
-</script>
-{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block title %}Ver Caso Especial{% endblock %}
+{% block h1 %}Detalle del Caso Especial{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <p><strong>Nombre del asistente:</strong> {{ caso.nombre }}</p>
+      <p><strong>Autorizado por:</strong> {{ caso.autorizado_por }}</p>
+      <p><strong>Descripción:</strong> {{ caso.descripcion }}</p>
+      <p><strong>Ticket ID:</strong> {{ caso.ticket_id or '—' }}</p>
+      <p><strong>Código de autorización:</strong> {{ caso.codigo_autorizacion or '—' }}</p>
+      <p><strong>Estado:</strong> {{ caso.estado }}</p>
+    </div>
+    <div class="card-footer text-end">
+      <form method="POST"  class="d-inline" >
+        <button type="submit" name="accion" value="aprobar" class="btn btn-success">Aprobar</button>
+        <button type="submit" name="accion" value="rechazar" class="btn btn-danger">Rechazar</button>
+        <a href="{{ url_for('routes.autorizar') }}" class="btn btn-secondary">Volver</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

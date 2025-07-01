@@ -104,6 +104,7 @@ def login():
                 session['user_id'] = usuario.get_id()
                 session['username'] = usuario.username
                 session['rol'] = usuario.rol
+                session['autoriza'] = usuario.autoriza
                 return redirect(url_for('routes.dashboard'))
 
             flash('Usuario o contraseña incorrectos', 'danger')
@@ -402,7 +403,8 @@ def casos_especiales():
             "ticket_id": form.get('ticket_id') or None,
             "codigo_autorizacion": form.get('codigo_autorizacion') or None,
             "estado": "solicitado",
-            "registrado_en": datetime.utcnow()
+            "registrado_en": datetime.utcnow(),
+            "autorizado_en" : ''
         }
 
         try:
@@ -471,16 +473,18 @@ def autorizar():
         return redirect(url_for('routes.login'))
 
     usuario_actual = mongo.db.usuarios.find_one({'_id': ObjectId(session['user_id'])})
-
+    print(request.method)
     # Verifica que sea autorizador
     if not usuario_actual or not usuario_actual.get('autoriza'):
         flash("No tienes permisos para acceder a esta página", "danger")
         return redirect(url_for('routes.dashboard'))
-
+    
     if request.method == 'POST':
         caso_id = request.form.get('caso_id')
         accion = request.form.get('accion')
-
+       
+       
+        request.form.get('id')
         if caso_id and accion in ['autorizado', 'rechazado']:
             mongo.db.casos_especiales.update_one(
                 {'_id': ObjectId(caso_id)},
@@ -514,3 +518,36 @@ def log_front():
             logging.info(f"[JS] {mensaje}")
         return jsonify({"status": "ok"}), 200
     return jsonify({"status": "missing message"}), 400
+
+@routes.route('/ver-caso/<caso_id>', methods=['GET', 'POST'])
+def ver_caso(caso_id):
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    caso = mongo.db.casos_especiales.find_one({"_id": ObjectId(caso_id)})
+
+    if not caso:
+        flash("Caso no encontrado", "danger")
+        return redirect(url_for('routes.autorizaciones'))
+
+    if request.method == 'POST':
+        accion = request.form.get('accion')
+        if accion == 'aprobar':
+            mongo.db.casos_especiales.update_one(
+                {"_id": ObjectId(caso_id)},
+                {"$set": {"estado": "Autorizado",
+                'autorizado_en': datetime.utcnow()}
+                }
+            )
+            flash("Caso aprobado correctamente", "success")
+        elif accion == 'rechazar':
+            mongo.db.casos_especiales.update_one(
+                {"_id": ObjectId(caso_id)},
+               {"$set": {"estado": "Rechazado",
+                'autorizado_en': datetime.utcnow()}
+                }
+            )
+            flash("Caso rechazado", "warning")
+        return redirect(url_for('routes.autorizar'))
+
+    return render_template("ver_caso.html", caso=caso)
