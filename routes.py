@@ -3,14 +3,15 @@ from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 from datetime import datetime
-
+from werkzeug.utils import secure_filename
 
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, messaging
 import pandas as pd
 import os
-
+import uuid
+import pandas as pd
 from extensions import mongo, app
 from functools import wraps
 from flask import abort
@@ -145,77 +146,62 @@ def logout():
     return redirect(url_for('routes.login'))
 
 # RUTA: Subida de CSV con asistentes
-import uuid
 
-@routes.route('/cargar_asistentes', methods=['GET', 'POST'])
-@rol_requerido('admin')
+
+@routes.route('/cargar-asistentes', methods=['GET', 'POST'])
 def cargar_asistentes():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
 
     if request.method == 'POST':
-        archivo = request.files['archivo']
-        event_id = '2864'
-
-        if not event_id:
-            flash('Debes proporcionar el ID del evento.')
-            return redirect(url_for('routes.cargar_asistentes'))
-
-        if archivo and archivo.filename.endswith('.csv'):
-            ruta = os.path.join(app.config['UPLOAD_FOLDER'], archivo.filename)
-            archivo.save(ruta)
-
+        archivo = request.files.get('archivo')
+        if archivo and archivo.filename.endswith('.xlsx'):
             try:
-                df = pd.read_csv(ruta)
-
-                columnas_requeridas = {'nombre', 'correo'}
-                if not columnas_requeridas.issubset(set(df.columns)):
-                    flash('El archivo debe contener las columnas: nombre, correo')
-                    return redirect(url_for('routes.cargar_asistentes'))
-
+                df = pd.read_excel(archivo)
                 insertados = 0
                 duplicados = 0
 
-                for i, row in df.iterrows():
-                    nombre = str(row.get('nombre', '')).strip()
-                    correo = str(row.get('correo', '')).strip()
-                    ticket_id = str(row.get('ticket_id', '')).strip()
-                    if not nombre or not correo:
-                        continue
+                for _, fila in df.iterrows():
+                    ticket_id = str(fila.get("Código de barras", "")).strip()
 
-                    
-                    security_code = '720a23f39c'
+                    if not ticket_id:
+                        continue  # omitir filas vacías
 
-                    existente = mongo.db.asistentes.find_one({
-                        'ticket_id': ticket_id,
-                        'event_id': event_id
-                    })
-
-                    if existente:
+                    # Verifica duplicado
+                    if mongo.db.asistentes.find_one({"ticket_id": ticket_id}):
                         duplicados += 1
                         continue
 
+                    boleto_raw = str(fila.get("Boleto del evento", "")).strip()
+                    boleto = "Completo" if "Training Días: 25, 26, 27" in boleto_raw else "Basico"
+
                     asistente = {
-                        'nombre': nombre,
-                        'correo': correo,
-                        'ticket_id': ticket_id,
-                        'security_code': security_code,
-                        'event_id': event_id,
-                        'checked_in': False,
-                        'timestamp_checkin': None
+                        "ticket_id": ticket_id,
+                        "nombre": str(fila.get("Nombre del asistente", "")).strip(),
+                        "telefono": str(fila.get("Teléfono", "")).strip(),
+                        "correo": str(fila.get("Correo electrónico", "")).strip(),
+                        "boleto": boleto,
+                        "nombre_completo": str(fila.get("Nombre Completo", "")).strip(),
+                        "sexo": str(fila.get("Sexo", "")).strip(),
+                        "edad": str(fila.get("Edad Actual", "")).strip(),
+                        "miembro_iglesia": str(fila.get("¿Es miembro de Iglesia VidaReal.tv?", "")).strip(),
+                        "etapa_somosjovenes": str(fila.get("¿A qué etapa de Somos.Jóvenes pertenece?", "")).strip(),
+                        "primera_vez": str(fila.get("¿Es su primera vez asistiendo a la conferencia?", "")).strip(),
+                        "telefono_whatsapp": str(fila.get("Teléfono (WhatsApp)", "")).strip(),
+                        "punto_vidareal": str(fila.get("Si respondió “sí”, ¿a qué Punto VidaReal asiste?", "")).strip()
                     }
 
                     mongo.db.asistentes.insert_one(asistente)
                     insertados += 1
 
-                flash(f'Archivo procesado. Agregados: {insertados}. Duplicados ignorados: {duplicados}.')
-                return redirect(url_for('routes.dashboard'))
-
+                flash(f'{insertados} asistentes cargados. {duplicados} duplicados omitidos.', 'success')
             except Exception as e:
-                flash(f'Error al procesar el archivo: {str(e)}')
-                return redirect(url_for('routes.cargar_asistentes'))
+                flash(f'Error al procesar el archivo: {e}', 'danger')
+        else:
+            flash('Por favor sube un archivo Excel (.xlsx)', 'warning')
 
     return render_template('cargar_asistentes.html')
+
 
 
 
@@ -244,27 +230,17 @@ def checkout():
 
     if request.method == 'POST':
         if 'codigo_qr' in request.form:
-            from urllib.parse import urlparse, parse_qs
             qr_data = request.form.get('codigo_qr', '').strip()
 
             try:
-                parsed_url = urlparse(qr_data)
-                query_params = parse_qs(parsed_url.query)
+                ticket_id = qr_data  # QR contiene directamente el código
 
-                ticket_id = query_params.get('ticket_id', [None])[0]
-                event_id = query_params.get('event_id', [None])[0]
-                security_code = query_params.get('security_code', [None])[0]
-
-                if ticket_id and event_id and security_code:
-                    asistente = mongo.db.asistentes.find_one({
-                        'ticket_id': ticket_id,
-                        'event_id': event_id,
-                        'security_code': security_code
-                    })
+                if ticket_id:
+                    asistente = mongo.db.asistentes.find_one({'ticket_id': ticket_id})
 
                     if asistente:
                         if asistente.get('checked_in'):
-                            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+                            mensaje = f'⚠️ Atención: asistente ya fue registrado el {asistente.get("timestamp_checkin").strftime("%d/%m/%Y %H:%M:%S")}'
                         else:
                             mongo.db.asistentes.update_one(
                                 {'_id': asistente['_id']},
@@ -277,24 +253,18 @@ def checkout():
                             asistente['checked_in'] = True
                             mensaje = '✅ Asistente registrado exitosamente.'
                     else:
-                        mensaje = '❌ No se encontró al asistente con ese QR.'
+                        mensaje = '❌ No se encontró al asistente con ese código.'
                 else:
-                    mensaje = '❌ QR incompleto.'
+                    mensaje = '❌ Código QR vacío.'
             except Exception as e:
-                mensaje = f'Error al leer QR: {str(e)}'
+                mensaje = f'Error al procesar el código: {str(e)}'
 
         elif 'busqueda' in request.form:
-            
             query = request.form.get('busqueda', '').strip()
             if query:
                 resultados = list(mongo.db.asistentes.find({
-                    '$or': [
-                        {'nombre': {'$regex': query, '$options': 'i'}},
-                        {'correo': {'$regex': query, '$options': 'i'}},
-                        {'ticket_id': query}
-                    ]
+                    'ticket_id': query
                 }))
-                print(resultados)
     return render_template('checkout.html', asistente=asistente, mensaje=mensaje,
                            resultados=resultados, query=query)
 
