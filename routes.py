@@ -76,6 +76,7 @@ def index():
 
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
+@rol_requerido('admin')
 def registro():
     if request.method == 'POST':
         nombre=request.form['name']
@@ -125,13 +126,46 @@ def dashboard():
 
     total = mongo.db.asistentes.count_documents({})
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
+    pre = mongo.db.asistentes.count_documents({'pre_registro': True})
     pendientes = total - registrados
-    porcentaje = round((registrados / total * 100), 2) if total else 0
+    porcentaje = round(((registrados + pre) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos.count_documents({})
+
+    tipo = request.args.get('boleto', 'todos')
+    sexo = request.args.get('sexo', 'todos')
+
+    filtro = {}
+    if tipo != 'todos':
+        filtro['boleto'] = tipo
+    if sexo != 'todos':
+        filtro['sexo'] = sexo
+
+    asistentes = list(mongo.db.asistentes.find(filtro, {'edad': 1}))
+
+    def obtener_edad(asistente):
+        try:
+            return int(asistente.get('edad', 0))
+        except (ValueError, TypeError):
+            return 0
+
+    segmento_15_17 = sum(1 for a in asistentes if 15 <= obtener_edad(a) <= 17)
+    segmento_18_24 = sum(1 for a in asistentes if 18 <= obtener_edad(a) <= 24)
+    segmento_25_mas = sum(1 for a in asistentes if obtener_edad(a) >= 25)
+
+    datos_segmentos = {
+        "labels": ["15-17 años", "18-24 años", "25-30+ años"],
+        "valores": [segmento_15_17, segmento_18_24, segmento_25_mas]
+    }
+
+
     return render_template(
         'dashboard.html',
+        datos_segmentos=datos_segmentos, 
+        filtro_tipo=tipo, 
+        filtro_sexo=sexo,
         total=total,
         registrados=registrados,
+        preregistro=pre,
         pendientes=pendientes,
         porcentaje=porcentaje,
         casos_especiales=casos_especiales
@@ -149,6 +183,7 @@ def logout():
 
 
 @routes.route('/cargar-asistentes', methods=['GET', 'POST'])
+@rol_requerido('admin')
 def cargar_asistentes():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
@@ -239,19 +274,23 @@ def checkout():
                     asistente = mongo.db.asistentes.find_one({'ticket_id': ticket_id})
 
                     if asistente:
-                        if asistente.get('checked_in'):
-                            mensaje = f'⚠️ Atención: asistente ya fue registrado el {asistente.get("timestamp_checkin").strftime("%d/%m/%Y %H:%M:%S")}'
+                        if asistente.get('pre_registro'):
+                            mensaje = f'⚠️ Atención: asistente ya fue pre-registrado el {asistente.get("timestamp_pre").strftime("%d/%m/%Y %H:%M:%S")}'
                         else:
                             mongo.db.asistentes.update_one(
                                 {'_id': asistente['_id']},
                                 {'$set': {
-                                    'checked_in': True,
-                                    'timestamp_checkin': datetime.utcnow(),
-                                    'registrado_por': session.get('username', 'desconocido')
+                                    # 'checked_in': True,
+                                    # 'timestamp_checkin': datetime.utcnow(),
+                                    # 'registrado_por': session.get('username', 'desconocido')
+                                        'pre_registro': True,
+                                        'timestamp_pre': datetime.utcnow(),
+                                        'pre_registrado_por': session.get('username', 'desconocido')
+                                    
                                 }}
                             )
-                            asistente['checked_in'] = True
-                            mensaje = '✅ Asistente registrado exitosamente.'
+                            asistente['pre-registro'] = True
+                            mensaje = '✅ Asistente pre-registrado exitosamente.'
                     else:
                         mensaje = '❌ No se encontró al asistente con ese código.'
                 else:
@@ -263,7 +302,12 @@ def checkout():
             query = request.form.get('busqueda', '').strip()
             if query:
                 resultados = list(mongo.db.asistentes.find({
-                    'ticket_id': query
+                '$or': [
+                    {'nombre': {'$regex': query, '$options': 'i'}},
+                    {'correo': {'$regex': query, '$options': 'i'}},
+                    {'nombre_completo': {'$regex': query, '$options': 'i'}},
+                    {'ticket_id': query}
+                ]
                 }))
     return render_template('checkout.html', asistente=asistente, mensaje=mensaje,
                            resultados=resultados, query=query)
@@ -285,6 +329,7 @@ def checkin_manual():
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
+                    {'nombre_completo': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
             }))
@@ -301,15 +346,18 @@ def confirmar_checkin_manual(id):
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
     if asistente:
-        if asistente.get('checked_in'):
-            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+        if asistente.get('pre_registro'):
+            mensaje = f'⚠️ Atención asistente ya fe pre-registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
         else:
             mongo.db.asistentes.update_one(
                 {'_id': ObjectId(id)},
                 {'$set': {
-                    'checked_in': True,
-                    'timestamp_checkin': datetime.utcnow(),
-                    'registrado_por': session.get('username', 'desconocido')
+                    # 'checked_in': True,
+                    # 'timestamp_checkin': datetime.utcnow(),
+                    # 'registrado_por': session.get('username', 'desconocido')
+                    'pre_registro': True,
+                    'timestamp_pre': datetime.utcnow(),
+                    'pre_registrado_por': session.get('username', 'desconocido')
                 }}
             )
             mensaje = '✅ Asistente registrado exitosamente.'
@@ -329,18 +377,18 @@ def confirmar_checkin(id):
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
     if asistente:
-        if asistente.get('checked_in'):
-            mensaje = f'⚠️ Atención asistente ya fe registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+        if asistente.get('pre_registro'):
+            mensaje = f'⚠️ Atención asistente ya fue pre-registrado el {asistente.get("timestamp_pre").strftime('%d/%m/%Y %H:%M:%S')}'
         else:
             mongo.db.asistentes.update_one(
                 {'_id': ObjectId(id)},
                 {'$set': {
-                    'checked_in': True,
-                    'timestamp_checkin': datetime.utcnow(),
-                    'registrado_por': session.get('username', 'desconocido')
+                    'pre_registro': True,
+                    'timestamp_pre': datetime.utcnow(),
+                    'pre_registrado_por': session.get('username', 'desconocido')
                 }}
             )
-            asistente['checked_in'] = True
+            asistente['pre_registro'] = True
             mensaje = '✅ Asistente registrado exitosamente.'
     else:
         mensaje = '❌ El asistente ya estaba registrado o no se encontró.'

@@ -35,7 +35,7 @@
               <input type="text" class="form-control" name="busqueda" placeholder="Nombre, correo o ticket ID" value="{{ query or '' }}" required>
               <button type="submit" class="btn btn-primary">Buscar</button>
             </form>
-             {{ mensaje}}
+             {{ mensaje or ''}}
              
             {% if resultados %}
               <div class="table-responsive mt-4">
@@ -80,33 +80,48 @@
 
     <!-- Modal de resultado del QR -->
     <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-dark text-white">
-            <h5 class="modal-title">Resultado del Check-in</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      {% set is_completo = asistente and asistente.get('boleto') == 'Completo' %}
+      {% set modal_color = 'bg-warning text-dark' if is_completo else 'bg-info text-dark' %}
+      {% set badge_color = 'bg-warning text-dark' if is_completo else 'bg-info text-dark' %}
+      {% set icono = 'fa-solid fa-star' if is_completo else 'fa-solid fa-tag' %}
+      {% set texto_boleto = '¡Boleto COMPLETO! Entregar brazalete NARANJA 🟧' if is_completo else 'Boleto BÁSICO - Entregar brazalete CELESTE 🟦' %}
+
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class="{{ icono }} me-2"></i>Resultado del Check-in</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <div class="modal-body">
+        {% if asistente %}
+          <!-- Alerta destacada del tipo de boleto -->
+          <div class="alert {{ modal_color }} border border-dark fw-bold text-center" role="alert">
+            {{ texto_boleto }}
           </div>
-          <div class="modal-body">
-            {% if asistente %}
-              <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
-              <p><strong>Correo:</strong> {{ asistente.correo }}</p>
-              <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
-              <p><strong>Estado:</strong>
-                {{ mensaje}}
-              </p>
-              {% if asistente.registrado_por %}
-                <p><strong>Registrado por:</strong> {{ asistente.registrado_por }}</p>
-              {% endif %}
-            {% elif mensaje %}
-              <p>{{ mensaje }}</p>
-            {% endif %}
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-success" onclick="cerrarModal()">OK</button>
-          </div>
-        </div>
+
+          <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
+          <p><strong>Correo:</strong> {{ asistente.correo }}</p>
+          <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
+          <p><strong>Boleto:</strong>
+            <span class="badge rounded-pill {{ badge_color }} px-3 py-2 fs-6">{{ asistente.boleto }}</span>
+          </p>
+          <p><strong>Estado:</strong> {{ mensaje }}</p>
+          {% if asistente.registrado_por %}
+            <p><strong>Registrado por:</strong> {{ asistente.registrado_por }}</p>
+          {% endif %}
+        {% elif mensaje %}
+          <p>{{ mensaje }}</p>
+        {% endif %}
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="cerrarModal()">OK</button>
       </div>
     </div>
+  </div>
+</div>
 
   </div>
 
