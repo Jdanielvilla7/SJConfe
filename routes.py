@@ -44,6 +44,14 @@ def rol_requerido(rol_permitido):
         return decorador_funcion
     return decorador
 
+def acceso_requerido(f):
+    @wraps(f)
+    def decorada(*args, **kwargs):
+        if session.get('acceso') != 1:
+            flash('Acceso deshabilitado. Contacta al administrador.', 'danger')
+            return redirect(url_for('routes.login'))  # o a donde prefieras
+        return f(*args, **kwargs)
+    return decorada
 
 # MODELO DE USUARIO
 class Usuario:
@@ -53,6 +61,7 @@ class Usuario:
         self.autoriza = user_data['autoriza']
         self.password_hash = user_data['password']
         self.rol = user_data.get('rol', 'staff')  # Por defecto, 'staff'
+        self.acceso =  user_data.get('acceso', 0)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -76,6 +85,7 @@ def index():
 
 # RUTA: Registro
 @routes.route('/registro', methods=['GET', 'POST'])
+@acceso_requerido
 @rol_requerido('admin')
 def registro():
     if request.method == 'POST':
@@ -107,6 +117,7 @@ def login():
                 session['username'] = usuario.username
                 session['rol'] = usuario.rol
                 session['autoriza'] = usuario.autoriza
+                session['acceso'] = usuario.acceso
                 return redirect(url_for('routes.dashboard'))
 
             flash('Usuario o contraseña incorrectos', 'danger')
@@ -120,6 +131,7 @@ def login():
 
 # RUTA: Dashboard
 @routes.route('/dashboard')
+@acceso_requerido
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
@@ -147,14 +159,14 @@ def dashboard():
             return int(asistente.get('edad', 0))
         except (ValueError, TypeError):
             return 0
-
+    segmento_12_14 = sum(1 for a in asistentes if obtener_edad(a) <= 14)
     segmento_15_17 = sum(1 for a in asistentes if 15 <= obtener_edad(a) <= 17)
     segmento_18_24 = sum(1 for a in asistentes if 18 <= obtener_edad(a) <= 24)
     segmento_25_mas = sum(1 for a in asistentes if obtener_edad(a) >= 25)
 
     datos_segmentos = {
-        "labels": ["15-17 años", "18-24 años", "25-30+ años"],
-        "valores": [segmento_15_17, segmento_18_24, segmento_25_mas]
+        "labels": ["12-14","15-17 años", "18-24 años", "25-30+ años"],
+        "valores": [segmento_12_14,segmento_15_17, segmento_18_24, segmento_25_mas]
     }
 
 
@@ -254,6 +266,7 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 @routes.route('/checkout', methods=['GET', 'POST'])
+@acceso_requerido
 def checkout():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
@@ -314,6 +327,7 @@ def checkout():
 
 
 @routes.route('/checkin_manual', methods=['GET', 'POST'])
+@acceso_requerido
 def checkin_manual():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
@@ -368,6 +382,7 @@ def confirmar_checkin_manual(id):
                            
 
 @routes.route('/confirmar_checkin/<id>', methods=['POST'])
+@acceso_requerido
 def confirmar_checkin(id):
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
