@@ -3,6 +3,7 @@ from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 from datetime import datetime
+import pytz
 from werkzeug.utils import secure_filename
 
 from datetime import datetime
@@ -27,7 +28,29 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'routes.login'
 
+def gt_time(fecha_utc):
+    """
+    Convierte un datetime en UTC a hora local de Guatemala con formato legible.
 
+    :param timestamp_utc: objeto datetime con tzinfo UTC (como viene de Mongo)
+    :return: string en formato 'dd/mm/yyyy HH:MM AM/PM' en hora de Guatemala
+    """
+    if not fecha_utc:
+        return 'Sin registro'
+
+    if isinstance(fecha_utc, str):
+        fecha_utc = datetime.fromisoformat(fecha_utc)
+
+    # Convertir a zona UTC si aún no tiene zona
+    if fecha_utc.tzinfo is None:
+        fecha_utc = fecha_utc.replace(tzinfo=pytz.utc)
+
+    # Convertir a zona horaria de Guatemala
+    tz_guatemala = pytz.timezone('America/Guatemala')
+    fecha_gt = fecha_utc.astimezone(tz_guatemala)
+
+    
+    return fecha_gt.strftime('%d/%m/%Y %I:%M %p')
 
 # Ruta para el service worker de Firebase
 @routes.route('/firebase-messaging-sw.js')
@@ -58,6 +81,7 @@ class Usuario:
     def __init__(self, user_data):
         self.id = str(user_data['_id'])
         self.username = user_data['username']
+        self.nombre = user_data['nombre']
         self.autoriza = user_data['autoriza']
         self.password_hash = user_data['password']
         self.rol = user_data.get('rol', 'staff')  # Por defecto, 'staff'
@@ -95,7 +119,7 @@ def registro():
         rol = request.form.get('rol', 'staff')  
         autoriza = 0
         token_fcm = ''
-        mongo.db.usuarios.insert_one({'username': username, 'password': password, 'rol': rol,'token_fcm':token_fcm,'autoriza':autoriza})
+        mongo.db.usuarios.insert_one({'username': username,'nombre':nombre, 'password': password, 'rol': rol,'token_fcm':token_fcm,'autoriza':autoriza})
         flash('Usuario creado correctamente.')
         return redirect(url_for('routes.login'))
     return render_template('registro.html')
@@ -118,6 +142,7 @@ def login():
                 session['rol'] = usuario.rol
                 session['autoriza'] = usuario.autoriza
                 session['acceso'] = usuario.acceso
+                session['nombre'] = usuario.nombre
                 return redirect(url_for('routes.dashboard'))
 
             flash('Usuario o contraseña incorrectos', 'danger')
@@ -220,7 +245,12 @@ def cargar_asistentes():
                         continue
 
                     boleto_raw = str(fila.get("Boleto del evento", "")).strip()
-                    boleto = "Completo" if "Training Días: 25, 26, 27" in boleto_raw else "Basico"
+                    if "voluntario" in boleto_raw.lower():
+                        boleto = boleto_raw  # conserva el valor original si es voluntario
+                    elif "Training Días: 25, 26, 27" in boleto_raw:
+                        boleto = "Completo"
+                    else:
+                        boleto = "Basico"
 
                     asistente = {
                         "ticket_id": ticket_id,
@@ -235,7 +265,10 @@ def cargar_asistentes():
                         "etapa_somosjovenes": str(fila.get("¿A qué etapa de Somos.Jóvenes pertenece?", "")).strip(),
                         "primera_vez": str(fila.get("¿Es su primera vez asistiendo a la conferencia?", "")).strip(),
                         "telefono_whatsapp": str(fila.get("Teléfono (WhatsApp)", "")).strip(),
-                        "punto_vidareal": str(fila.get("Si respondió “sí”, ¿a qué Punto VidaReal asiste?", "")).strip()
+                        "punto_vidareal": str(fila.get("Si respondió “sí”, ¿a qué Punto VidaReal asiste?", "")).strip(),
+                        "talla": str(fila.get("Talla", "")).strip(),
+                        "almuerzo": str(fila.get("Almuerzo", "")).strip(),
+                        "training": str(fila.get("Training", "")).strip()
                     }
 
                     mongo.db.asistentes.insert_one(asistente)
@@ -287,23 +320,23 @@ def checkout():
                     asistente = mongo.db.asistentes.find_one({'ticket_id': ticket_id})
 
                     if asistente:
-                        if asistente.get('pre_registro'):
-                            mensaje = f'⚠️ Atención: asistente ya fue pre-registrado el {asistente.get("timestamp_pre").strftime("%d/%m/%Y %H:%M:%S")}'
+                        if asistente.get('checked_in'):
+                            mensaje = f'⚠️ Atención: asistente ya fue registrado el { gt_time(asistente.get("timestamp_checkin"))}'
                         else:
                             mongo.db.asistentes.update_one(
                                 {'_id': asistente['_id']},
                                 {'$set': {
-                                    # 'checked_in': True,
-                                    # 'timestamp_checkin': datetime.utcnow(),
-                                    # 'registrado_por': session.get('username', 'desconocido')
-                                        'pre_registro': True,
-                                        'timestamp_pre': datetime.utcnow(),
-                                        'pre_registrado_por': session.get('username', 'desconocido')
+                                    'checked_in': True,
+                                    'timestamp_checkin': datetime.now(pytz.timezone('America/Guatemala')),
+                                    'registrado_por': session.get('username', 'desconocido')
+                                        # 'pre_registro': True,
+                                        # 'timestamp_pre': datetime.now(pytz.timezone('America/Guatemala')),
+                                        # 'pre_registrado_por': session.get('username', 'desconocido')
                                     
                                 }}
                             )
-                            asistente['pre-registro'] = True
-                            mensaje = '✅ Asistente pre-registrado exitosamente.'
+                            asistente['checked_in'] = True
+                            mensaje = '✅ Asistente registrado exitosamente.'
                     else:
                         mensaje = '❌ No se encontró al asistente con ese código.'
                 else:
@@ -360,18 +393,18 @@ def confirmar_checkin_manual(id):
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
     if asistente:
-        if asistente.get('pre_registro'):
-            mensaje = f'⚠️ Atención asistente ya fe pre-registrado el {asistente.get("timestamp_checkin").strftime('%d/%m/%Y %H:%M:%S')}'
+        if asistente.get('checked_in'):
+            mensaje = f'⚠️ Atención asistente ya fe registrado el {gt_time(asistente.get("timestamp_checkin"))}'
         else:
             mongo.db.asistentes.update_one(
                 {'_id': ObjectId(id)},
                 {'$set': {
-                    # 'checked_in': True,
-                    # 'timestamp_checkin': datetime.utcnow(),
-                    # 'registrado_por': session.get('username', 'desconocido')
-                    'pre_registro': True,
-                    'timestamp_pre': datetime.utcnow(),
-                    'pre_registrado_por': session.get('username', 'desconocido')
+                    'checked_in': True,
+                    'timestamp_checkin': datetime.now(pytz.timezone('America/Guatemala')),
+                    'registrado_por': session.get('username', 'desconocido')
+                    # 'pre_registro': True,
+                    # 'timestamp_pre': datetime.now(pytz.timezone('America/Guatemala')),
+                    # 'pre_registrado_por': session.get('username', 'desconocido')
                 }}
             )
             mensaje = '✅ Asistente registrado exitosamente.'
@@ -392,18 +425,21 @@ def confirmar_checkin(id):
     asistente = mongo.db.asistentes.find_one({'_id': ObjectId(id)})
 
     if asistente:
-        if asistente.get('pre_registro'):
-            mensaje = f'⚠️ Atención asistente ya fue pre-registrado el {asistente.get("timestamp_pre").strftime('%d/%m/%Y %H:%M:%S')}'
+        if asistente.get('checked_in'):
+            mensaje = f'⚠️ Atención asistente ya fue registrado el {gt_time(asistente.get("timestamp_checkin"))}'
         else:
             mongo.db.asistentes.update_one(
                 {'_id': ObjectId(id)},
                 {'$set': {
-                    'pre_registro': True,
-                    'timestamp_pre': datetime.utcnow(),
-                    'pre_registrado_por': session.get('username', 'desconocido')
+                    'checked_in': True,
+                    'timestamp_checkin': datetime.now(pytz.timezone('America/Guatemala')),
+                    'registrado_por': session.get('username', 'desconocido')
+                    # 'pre_registro': True,
+                    # 'timestamp_pre': datetime.now(pytz.timezone('America/Guatemala')),
+                    # 'pre_registrado_por': session.get('username', 'desconocido')
                 }}
             )
-            asistente['pre_registro'] = True
+            asistente['checked_in'] = True
             mensaje = '✅ Asistente registrado exitosamente.'
     else:
         mensaje = '❌ El asistente ya estaba registrado o no se encontró.'
@@ -436,7 +472,7 @@ def casos_especiales():
             "ticket_id": form.get('ticket_id') or None,
             "codigo_autorizacion": form.get('codigo_autorizacion') or None,
             "estado": "solicitado",
-            "registrado_en": datetime.utcnow(),
+            "registrado_en": datetime.now(pytz.timezone('America/Guatemala')),
             "autorizado_en" : ''
         }
 
@@ -525,7 +561,7 @@ def autorizar():
                     '$set': {
                         'estado': accion,
                         'autorizado_por': usuario_actual.get('nombre'),
-                        'autorizado_en': datetime.utcnow()
+                        'autorizado_en': datetime.now(pytz.timezone('America/Guatemala'))
                     }
                 }
             )
@@ -569,7 +605,7 @@ def ver_caso(caso_id):
             mongo.db.casos_especiales.update_one(
                 {"_id": ObjectId(caso_id)},
                 {"$set": {"estado": "Autorizado",
-                'autorizado_en': datetime.utcnow()}
+                'autorizado_en': datetime.now(pytz.timezone('America/Guatemala'))}
                 }
             )
             flash("Caso aprobado correctamente", "success")
@@ -577,7 +613,7 @@ def ver_caso(caso_id):
             mongo.db.casos_especiales.update_one(
                 {"_id": ObjectId(caso_id)},
                {"$set": {"estado": "Rechazado",
-                'autorizado_en': datetime.utcnow()}
+                'autorizado_en': datetime.now(pytz.timezone('America/Guatemala'))}
                 }
             )
             flash("Caso rechazado", "warning")

@@ -55,7 +55,7 @@
                       <td>{{ asistente.nombre }}</td>
                       <td>{{ asistente.correo }}</td>
                       <td>{{ asistente.ticket_id }}</td>
-                      <td>{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
+                      <td class="text-center" >{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
                       <td>
                         {% if not asistente.checked_in %}
                           <form method="POST" action="{{ url_for('routes.confirmar_checkin', id=asistente._id) }}">
@@ -79,40 +79,66 @@
     </div>
 
     <!-- Modal de resultado del QR -->
-    <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
+   <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
 
+      {% set is_voluntario = asistente and 'voluntario' in asistente.get('boleto', '').lower() %}
       {% set is_completo = asistente and asistente.get('boleto') == 'Completo' %}
-      {% set modal_color = 'bg-warning text-dark' if is_completo else 'bg-info text-dark' %}
-      {% set badge_color = 'bg-warning text-dark' if is_completo else 'bg-info text-dark' %}
-      {% set icono = 'fa-solid fa-star' if is_completo else 'fa-solid fa-tag' %}
-      {% set texto_boleto = '¡Boleto COMPLETO! Entregar brazalete NARANJA 🟧' if is_completo else 'Boleto BÁSICO - Entregar brazalete CELESTE 🟦' %}
+      {% set modal_color = (
+          'bg-dark text-white' if is_voluntario else
+          'bg-warning text-dark' if is_completo else
+          'bg-info text-dark'
+      ) %}
+      {% set badge_color = (
+          'bg-dark text-white' if is_voluntario else
+          'bg-warning text-dark' if is_completo else
+          'bg-info text-dark'
+      ) %}
+      {% set icono = (
+          'fa-solid fa-handshake' if is_voluntario else
+          'fa-solid fa-star' if is_completo else
+          'fa-solid fa-tag'
+      ) %}
+      {% set texto_boleto = (
+          'Voluntario - ¡Gracias por servir! Colocar brazalete NEGRO ⚫' if is_voluntario else
+          '¡Boleto COMPLETO! Entregar brazalete NARANJA 🟧' if is_completo else
+          'Boleto BÁSICO - Entregar brazalete CELESTE 🟦'
+      ) %}
 
       <div class="modal-header bg-dark text-white">
         <h5 class="modal-title"><i class="{{ icono }} me-2"></i>Resultado del Check-in</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        <button type="button" class="btn btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
       </div>
 
-      <div class="modal-body">
+      <div class="modal-body text-center">
         {% if asistente %}
           <!-- Alerta destacada del tipo de boleto -->
           <div class="alert {{ modal_color }} border border-dark fw-bold text-center" role="alert">
             {{ texto_boleto }}
           </div>
 
+          {% if asistente.pre_registro %}
+          <p class="text-center"><strong class="h6">PRE-REGISTRADO</strong></p><hr>
+          {% endif %}
+          {% if is_voluntario %}
+            <p><strong class="h6">Talla Playera: {{ asistente.talla }}</strong></p>
+          {% endif %}
+          <p><strong>{{ mensaje }}</strong> </p><hr>
           <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
           <p><strong>Correo:</strong> {{ asistente.correo }}</p>
           <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
+          <hr>          
           <p><strong>Boleto:</strong>
             <span class="badge rounded-pill {{ badge_color }} px-3 py-2 fs-6">{{ asistente.boleto }}</span>
           </p>
-          <p><strong>Estado:</strong> {{ mensaje }}</p>
+          <p><strong >{{ mensaje }}</strong> </p>
           {% if asistente.registrado_por %}
             <p><strong>Registrado por:</strong> {{ asistente.registrado_por }}</p>
           {% endif %}
         {% elif mensaje %}
-          <p>{{ mensaje }}</p>
+          <p><strong >{{ mensaje }}</strong> </p>
+          <hr>
         {% endif %}
       </div>
 
