@@ -164,15 +164,20 @@ def dashboard():
     total = mongo.db.asistentes.count_documents({})
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
     pre = mongo.db.asistentes.count_documents({'pre_registro': True})
-    pendientes = total - registrados
+    pre_check = mongo.db.asistentes.count_documents({
+    'pre_registro': True,
+    'checked_in': True})
+    pre = pre - pre_check
+    pendientes = total - registrados 
+    pendientes_sin_pre = pendientes - pre
     porcentaje = round(((registrados ) / total * 100), 2) if total else 0
-    casos_especiales = mongo.db.casos.count_documents({})
+    casos_especiales = mongo.db.casos_especiales.count_documents({})
 
     tipo = request.args.get('boleto', 'todos')
     sexo = request.args.get('sexo', 'todos')
 
     filtro = {}
-    if tipo != 'todos':
+    if tipo != 'todos': 
         filtro['boleto'] = tipo
     if sexo != 'todos':
         filtro['sexo'] = sexo
@@ -205,7 +210,8 @@ def dashboard():
         preregistro=pre,
         pendientes=pendientes,
         porcentaje=porcentaje,
-        casos_especiales=casos_especiales
+        casos_especiales=casos_especiales,
+        pendientes_sin_pre = pendientes_sin_pre
     )
 
 
