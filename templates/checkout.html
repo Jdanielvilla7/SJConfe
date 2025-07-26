@@ -122,7 +122,13 @@
           <p class="text-center"><strong class="h6">PRE-REGISTRADO</strong></p><hr>
           {% endif %}
           {% if is_voluntario %}
+          {% if recogio_almuerzo %}
+          <p><strong class="h6">⚠️ Atención: YA RECOGIO ALMUERZO</strong></p>  
+          {% endif %}
+          <p><strong class="h6">Menu: {{ asistente.almuerzo }}</strong></p>
+            
             <p><strong class="h6">Talla Playera: {{ asistente.talla }}</strong></p>
+            
           {% endif %}
           <p><strong>{{ mensaje }}</strong> </p><hr>
           <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>

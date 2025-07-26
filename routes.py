@@ -334,7 +334,8 @@ def checkout():
                                 {'$set': {
                                     'checked_in': True,
                                     'timestamp_checkin': datetime.now(pytz.timezone('America/Guatemala')),
-                                    'registrado_por': session.get('username', 'desconocido')
+                                    'registrado_por': session.get('username', 'desconocido'),
+                                    'recogio_almuerzo' : True
                                         # 'pre_registro': True,
                                         # 'timestamp_pre': datetime.now(pytz.timezone('America/Guatemala')),
                                         # 'pre_registrado_por': session.get('username', 'desconocido')
