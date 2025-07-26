@@ -165,7 +165,7 @@ def dashboard():
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
     pre = mongo.db.asistentes.count_documents({'pre_registro': True})
     pendientes = total - registrados
-    porcentaje = round(((registrados + pre) / total * 100), 2) if total else 0
+    porcentaje = round(((registrados ) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos.count_documents({})
 
     tipo = request.args.get('boleto', 'todos')
