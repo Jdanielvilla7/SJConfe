@@ -240,7 +240,7 @@ def cargar_asistentes():
                 duplicados = 0
 
                 for _, fila in df.iterrows():
-                    ticket_id = str(fila.get("Código de barras", "")).strip()
+                    ticket_id = str(fila.get("RegistrationID", "")).strip()
 
                     if not ticket_id:
                         continue  # omitir filas vacías
@@ -250,31 +250,52 @@ def cargar_asistentes():
                         duplicados += 1
                         continue
 
-                    boleto_raw = str(fila.get("Boleto del evento", "")).strip()
-                    if "voluntario" in boleto_raw.lower():
-                        boleto = boleto_raw  # conserva el valor original si es voluntario
-                    elif "Training Días: 25, 26, 27" in boleto_raw:
-                        boleto = "Completo"
-                    else:
-                        boleto = "Basico"
+                    # boleto_raw = str(fila.get("Boleto del evento", "")).strip()
+                    # if "voluntario" in boleto_raw.lower():
+                    #     boleto = boleto_raw  # conserva el valor original si es voluntario
+                    # elif "Training Días: 25, 26, 27" in boleto_raw:
+                    #     boleto = "Completo"
+                    # else:
+                    #     boleto = "Basico"
+
+                    # Robust parsing for fecha_nacimiento: handle empty/NaN values and several common formats
+                    raw_fecha = fila.get("¿Fecha de nacimiento", "")
+                    fecha_nacimiento = None
+                    try:
+                        # pandas may return NaN for missing values
+                        if pd.isna(raw_fecha) or str(raw_fecha).strip() == "":
+                            fecha_nacimiento = None
+                        else:
+                            if isinstance(raw_fecha, datetime):
+                                fecha_nacimiento = raw_fecha.date()
+                            else:
+                                fecha_str = str(raw_fecha).strip()
+                                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+                                    try:
+                                        fecha_nacimiento = datetime.strptime(fecha_str, fmt).date()
+                                        break
+                                    except Exception:
+                                        continue
+                    except Exception:
+                        fecha_nacimiento = None
 
                     asistente = {
                         "ticket_id": ticket_id,
-                        "nombre": str(fila.get("Nombre del asistente", "")).strip(),
+                        "nombre": str(fila.get("Asistente", "")).strip(),
                         "telefono": str(fila.get("Teléfono", "")).strip(),
-                        "correo": str(fila.get("Correo electrónico", "")).strip(),
-                        "boleto": boleto,
-                        "nombre_completo": str(fila.get("Nombre Completo", "")).strip(),
+                        "correo": str(fila.get("Email", "")).strip(),
+                        "nombre_completo": str(fila.get("Nombre y apellido", "")).strip(),
                         "sexo": str(fila.get("Sexo", "")).strip(),
-                        "edad": str(fila.get("Edad Actual", "")).strip(),
-                        "miembro_iglesia": str(fila.get("¿Es miembro de Iglesia VidaReal.tv?", "")).strip(),
-                        "etapa_somosjovenes": str(fila.get("¿A qué etapa de Somos.Jóvenes pertenece?", "")).strip(),
-                        "primera_vez": str(fila.get("¿Es su primera vez asistiendo a la conferencia?", "")).strip(),
-                        "telefono_whatsapp": str(fila.get("Teléfono (WhatsApp)", "")).strip(),
-                        "punto_vidareal": str(fila.get("Si respondió “sí”, ¿a qué Punto VidaReal asiste?", "")).strip(),
-                        "talla": str(fila.get("Talla", "")).strip(),
-                        "almuerzo": str(fila.get("Almuerzo", "")).strip(),
-                        "training": str(fila.get("Training", "")).strip()
+                        "edad": str(fila.get("Edad", "")).strip(),
+                        "fecha_nacimiento": fecha_nacimiento,
+                        "telefono_whatsapp": str(fila.get("Teléfono", "")).strip(),
+                        "punto_vidareal": str(fila.get("Punto Vida Real.tv al que asistes", "")).strip(),
+                        "talla": str(fila.get("Talla de playera", "")).strip(),
+                        "bautizado": str(fila.get("¿Estás Bautizado?", "")).strip(),
+                        "nada": str(fila.get("¿Sabes Nadar?", "")).strip(),
+                        "contacto": str(fila.get("Nombre completo de tu papá / mamá", "")).strip(),                        
+                        "telefono_contacto": str(fila.get("Número de tu papá / mamá", "")).strip(),
+                        "correo_contacto": str(fila.get("Correo electrónico de tu papá / mamá", "")).strip()
                     }
 
                     mongo.db.asistentes.insert_one(asistente)

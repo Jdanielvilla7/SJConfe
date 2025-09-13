@@ -49,7 +49,7 @@
     </a>
     {% endif %}
     {% if session.get('rol') == 'admin' %}
-    
+
     <hr class="bg-white">
     <a href="{{ url_for('routes.cargar_asistentes') }}"
       class="{% if request.endpoint == 'routes.cargar_asistentes' %}active{% endif %}">
@@ -60,13 +60,13 @@
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
     </a>
     {% endif %}
-      {% if session.get('autoriza')==1 %}
-    
+    {% if session.get('autoriza')==1 %}
+
     <hr class="bg-white">
     <a href="{{ url_for('routes.autorizar') }}"
       class="{% if request.endpoint == 'routes.autorizar' %}active{% endif %}">
       <i class="fas fa-upload me-2"></i>Autorizar Casos
-      </a>
+    </a>
     {% endif %}
     <hr class="bg-white">
 
@@ -78,7 +78,7 @@
     <!-- Encabezado del contenido -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light rounded shadow-sm  mb-4 px-4">
       <div class="container-fluid">
-        <span class="mb-0 text-muted h6">Confe ETERNO | {% block h1 %}{% endblock %}</span>
+        <span class="mb-0 text-muted h6">Es Tiempo Campa | {% block h1 %}{% endblock %}</span>
         <div class="d-none d-md-flex ms-auto align-items-center">
           <span class="text-muted me-3 small">
             Usuario: <strong>{{ session.get('username') }}</strong> | Rol: <strong>{{ session.get('rol') }}</strong>
@@ -128,57 +128,57 @@
 {% raw %}
 
 <script>
-      const firebaseConfig = {
-      apiKey: "AIzaSyC5jWT-1bUL_IjHLs7xpTdcKRNLZpbn-oM",
-      authDomain: "sjconfe-e9f07.firebaseapp.com",
-      projectId: "sjconfe-e9f07",
-      storageBucket: "jconfe-e9f07.firebasestorage.app",
-      messagingSenderId: "595583890328",
-      appId: "1:595583890328:web:14598da6a5be3493f531ed"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyC5jWT-1bUL_IjHLs7xpTdcKRNLZpbn-oM",
+    authDomain: "sjconfe-e9f07.firebaseapp.com",
+    projectId: "sjconfe-e9f07",
+    storageBucket: "jconfe-e9f07.firebasestorage.app",
+    messagingSenderId: "595583890328",
+    appId: "1:595583890328:web:14598da6a5be3493f531ed"
+  };
 
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
 
-    const messaging = firebase.messaging();
+  const messaging = firebase.messaging();
 
-   function solicitarTokenNotificaciones() {
-        Notification.requestPermission().then((permission) => {
-          logDesdeFrontend("Iniciando prueba");
-        if (permission === 'granted') {
-          messaging.getToken({ vapidKey: 'BFFbqMhgq6AOnAPS2z87qlFwF65mt1dV6WjEtZZuuzHrDn2da1FIdcPeHnjccfE25KkeYomDk2MVrysY0IuFWsc' })
-            .then((currentToken) => {
-              if (currentToken) {
-                
-                logDesdeFrontend(currentToken);
-                console.log("Token obtenido:", currentToken);
-                fetch('/guardar_token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ currentToken })
-                  });
-                
-              } else {
-                console.log("No se pudo obtener token.");
-                logDesdeFrontend("No se pudo obtener Token","error");
-                
-              }
-            })
-            .catch((err) => {
-              console.error("Error al obtener el token:", err);
-              logDesdeFrontend("Error al obtener Token","error");
-    
-              
-            });
-        } else {
-          console.log("Permiso de notificación denegado");
-          
-        
-        }
-      });
-  
+  function solicitarTokenNotificaciones() {
+    Notification.requestPermission().then((permission) => {
+      logDesdeFrontend("Iniciando prueba");
+      if (permission === 'granted') {
+        messaging.getToken({ vapidKey: 'BFFbqMhgq6AOnAPS2z87qlFwF65mt1dV6WjEtZZuuzHrDn2da1FIdcPeHnjccfE25KkeYomDk2MVrysY0IuFWsc' })
+          .then((currentToken) => {
+            if (currentToken) {
+
+              logDesdeFrontend(currentToken);
+              console.log("Token obtenido:", currentToken);
+              fetch('/guardar_token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ currentToken })
+              });
+
+            } else {
+              console.log("No se pudo obtener token.");
+              logDesdeFrontend("No se pudo obtener Token", "error");
+
+            }
+          })
+          .catch((err) => {
+            console.error("Error al obtener el token:", err);
+            logDesdeFrontend("Error al obtener Token", "error");
+
+
+          });
+      } else {
+        console.log("Permiso de notificación denegado");
+
+
+      }
+    });
+
   }
 
   // Ejecutarlo al cargar la página si el usuario está autenticado
@@ -187,17 +187,16 @@
   });
 
   function logDesdeFrontend(mensaje, nivel = 'info') {
-  fetch('/log-front', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },    
-    body: JSON.stringify({ mensaje: mensaje, nivel: nivel })
-  }).catch(err => {
-    console.warn('Fallo al enviar log al servidor:', err);
-  }); document.getElementById('form-autorizar')
+    fetch('/log-front', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mensaje: mensaje, nivel: nivel })
+    }).catch(err => {
+      console.warn('Fallo al enviar log al servidor:', err);
+    }); document.getElementById('form-autorizar')
   }
-   
+
 </script>
 {% endraw %}
 
 </html>
-
