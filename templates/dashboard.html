@@ -14,31 +14,16 @@
         </div>
       </div>
     </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-success shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Con pre-registro</h6>
-          <p class="card-text fs-4">{{ preregistro }}</p>
-        </div>
-      </div>
-    </div>
+
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
       <div class="card text-white bg-danger shadow-sm text-center">
         <div class="card-body">
-          <h6 class="card-title">Sin Pre y check-in</h6>
-          <p class="card-text fs-4">{{ pendientes_sin_pre }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-danger shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Total Sin check-in</h6>
+          <h6 class="card-title">Sin check-in</h6>
           <p class="card-text fs-4">{{ pendientes }}</p>
         </div>
       </div>
     </div>
- <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
       <div class="card text-white bg-primary shadow-sm text-center">
         <div class="card-body">
           <h6 class="card-title">Total general </h6>
@@ -46,7 +31,7 @@
         </div>
       </div>
     </div>
-     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
       <div class="card text-white bg-dark shadow-sm text-center">
         <div class="card-body">
           <h6 class="card-title">Avance</h6>
@@ -63,7 +48,7 @@
       </div>
     </div>
 
-   
+
 
   </div>
 </div>
@@ -74,17 +59,17 @@
     <div class="col-md-3">
       <label class="form-label">Tipo de boleto</label>
       <select name="boleto" class="form-select">
-        <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos</option>
-        <option value="Basico" {% if filtro_tipo == 'Basico' %}selected{% endif %}>Básico</option>
-        <option value="Completo" {% if filtro_tipo == 'Completo' %}selected{% endif %}>Completo</option>
+        <option value="todos" {% if filtro_tipo=='todos' %}selected{% endif %}>Todos</option>
+        <option value="Basico" {% if filtro_tipo=='Basico' %}selected{% endif %}>Básico</option>
+        <option value="Completo" {% if filtro_tipo=='Completo' %}selected{% endif %}>Completo</option>
       </select>
     </div>
     <div class="col-md-3">
       <label class="form-label">Sexo</label>
       <select name="sexo" class="form-select">
-        <option value="todos" {% if filtro_sexo == 'todos' %}selected{% endif %}>Todos</option>
-        <option value="Hombre" {% if filtro_sexo == 'Hombre' %}selected{% endif %}>Chicos</option>
-        <option value="Mujer" {% if filtro_sexo == 'Mujer' %}selected{% endif %}>Chicas</option>
+        <option value="todos" {% if filtro_sexo=='todos' %}selected{% endif %}>Todos</option>
+        <option value="Hombre" {% if filtro_sexo=='Hombre' %}selected{% endif %}>Chicos</option>
+        <option value="Mujer" {% if filtro_sexo=='Mujer' %}selected{% endif %}>Chicas</option>
       </select>
     </div>
     <div class="col-md-2 align-self-end">
@@ -108,13 +93,13 @@
   const ctx = document.getElementById('graficaSegmentos').getContext('2d');
 
   const data = {
-    labels: {{ datos_segmentos.labels|tojson }},
-    datasets: [{
-      label: 'Cantidad de asistentes',
-      data: {{ datos_segmentos.valores|tojson }},
-      backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e'],
-      borderColor: ['#2e59d9', '#17a673', '#e0a800'],
-      borderWidth: 1
+    labels: {{ datos_segmentos.labels| tojson }},
+  datasets: [{
+    label: 'Cantidad de asistentes',
+    data: {{ datos_segmentos.valores | tojson }},
+    backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e'],
+    borderColor: ['#2e59d9', '#17a673', '#e0a800'],
+    borderWidth: 1
     }]
   };
 
