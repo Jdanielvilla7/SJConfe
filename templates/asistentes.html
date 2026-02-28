@@ -23,6 +23,7 @@
           <th>Ticket</th>
           <th>Nombre</th>
           <th>Correo</th>
+          <th>Teléfono</th>
           <th>Cabaña</th>
           <th>Líder</th>
           <th>Registro</th>
@@ -35,6 +36,7 @@
           <td>{{ asistente.ticket_id or '—' }}</td>
           <td>{{ asistente.nombre }}</td>
           <td>{{ asistente.correo }}</td>
+          <td>{{ asistente.telefono or '—' }}</td>
           <td>{{ asistente.cabana or '—' }}</td>
           <td>{{ asistente.lider or '—' }}</td>
           <td>{{ asistente.registro or '—' }}</td>
@@ -48,7 +50,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted">No se encontraron asistentes.</td>
+          <td colspan="8" class="text-center text-muted">No se encontraron asistentes.</td>
         </tr>
         {% endfor %}
       </tbody>
