@@ -10,6 +10,18 @@
   <!-- Escaneo de QR -->
   <div class="row">
 
+    <div class="col-md-4 mb-5">
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+          <h5 class="mb-0"><i class="fa-solid fa-qrcode"></i> Escaneo QR</h5>
+        </div>
+        <div class="card-body">
+          <div id="reader" style="width: 100%;"></div>
+          <p class="text-muted small mt-2 mb-0">Permite acceso a la cámara para escanear el código QR del ticket.</p>
+        </div>
+      </div>
+    </div>
+
 
     <!-- Búsqueda manual -->
     <div class="col-md-8 mb-5">
@@ -19,8 +31,8 @@
         </div>
         <div class="card-body">
           <form method="POST" class="d-flex gap-2" action="{{ url_for('routes.checkout')}}">
-            <input type="text" class="form-control" name="busqueda" placeholder="Nombre, correo o ticket ID"
-              value="{{ query or '' }}" required>
+            <input type="text" class="form-control" name="busqueda"
+              placeholder="Nombre, correo, líder, cabaña, teléfono o ticket ID" value="{{ query or '' }}" required>
             <button type="submit" class="btn btn-primary">Buscar</button>
           </form>
           {{ mensaje or ''}}
@@ -32,6 +44,8 @@
                 <tr>
                   <th>Nombre</th>
                   <th>Correo</th>
+                  <th>Cabaña</th>
+                  <th>Líder</th>
                   <th>Ticket ID</th>
                   <th>Estado</th>
                   <th>Acción</th>
@@ -42,6 +56,8 @@
                 <tr>
                   <td>{{ asistente.nombre }}</td>
                   <td>{{ asistente.correo }}</td>
+                  <td>{{ asistente.cabana or '—' }}</td>
+                  <td>{{ asistente.lider or '—' }}</td>
                   <td>{{ asistente.ticket_id }}</td>
                   <td class="text-center">{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
                   <td>
@@ -70,29 +86,7 @@
   <div class="modal fade" id="resultadoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-
-        {% set is_voluntario = asistente and 'voluntario' in asistente.get('boleto', '').lower() %}
-        {% set is_completo = asistente and asistente.get('boleto') == 'Completo' %}
-        {% set modal_color = (
-        'bg-dark text-white' if is_voluntario else
-        'bg-warning text-dark' if is_completo else
-        'bg-info text-dark'
-        ) %}
-        {% set badge_color = (
-        'bg-dark text-white' if is_voluntario else
-        'bg-warning text-dark' if is_completo else
-        'bg-info text-dark'
-        ) %}
-        {% set icono = (
-        'fa-solid fa-handshake' if is_voluntario else
-        'fa-solid fa-star' if is_completo else
-        'fa-solid fa-tag'
-        ) %}
-        {% set texto_boleto = (
-        'Voluntario - ¡Gracias por servir! Colocar brazalete NEGRO ⚫' if is_voluntario else
-        '¡Boleto COMPLETO! Entregar brazalete NARANJA 🟧' if is_completo else
-        'Boleto BÁSICO - Entregar brazalete CELESTE 🟦'
-        ) %}
+        {% set icono = 'fa-solid fa-user-check' %}
 
         <div class="modal-header bg-dark text-white">
           <h5 class="modal-title"><i class="{{ icono }} me-2"></i>Resultado del Check-in</h5>
@@ -102,26 +96,14 @@
 
         <div class="modal-body text-center">
           {% if asistente %}
-          <!-- Alerta destacada del tipo de boleto -->
-
-
-          {% if asistente.pre_registro %}
-          <p class="text-center"><strong class="h6">PRE-REGISTRADO</strong></p>
-          <hr>
-          {% endif %}
-          {% if is_voluntario %}
-          {% if recogio_almuerzo %}
-          <p><strong class="h6">⚠️ Atención: YA RECOGIO ALMUERZO</strong></p>
-          {% endif %}
-          <p><strong class="h6">Menu: {{ asistente.almuerzo }}</strong></p>
-
-          <p><strong class="h6">Talla Playera: {{ asistente.talla }}</strong></p>
-
-          {% endif %}
+          {% set lider_valor = (asistente.lider or '')|string|trim|lower %}
+          {% set es_lider = lider_valor in ['si', 'sí', 's', 'true', '1', 'yes', 'y', 'x'] %}
           <p><strong>{{ mensaje }}</strong> </p>
           <hr>
           <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
           <p><strong>Correo:</strong> {{ asistente.correo }}</p>
+          <p><strong>¿Es líder?:</strong> {% if es_lider %}Sí{% else %}No{% endif %}</p>
+          <p><strong>Cabaña:</strong> {{ asistente.cabana or '—' }}</p>
           <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
           <hr>
 

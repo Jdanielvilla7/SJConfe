@@ -57,19 +57,21 @@
 
   <form method="GET" class="row g-2 mb-4">
     <div class="col-md-3">
-      <label class="form-label">Tipo de boleto</label>
-      <select name="boleto" class="form-select">
-        <option value="todos" {% if filtro_tipo=='todos' %}selected{% endif %}>Todos</option>
-        <option value="Basico" {% if filtro_tipo=='Basico' %}selected{% endif %}>Básico</option>
-        <option value="Completo" {% if filtro_tipo=='Completo' %}selected{% endif %}>Completo</option>
+      <label class="form-label">Cabaña</label>
+      <select name="cabana" class="form-select">
+        <option value="todos" {% if filtro_cabana=='todos' %}selected{% endif %}>Todas</option>
+        {% for item in cabanas %}
+        <option value="{{ item }}" {% if filtro_cabana==item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="col-md-3">
-      <label class="form-label">Sexo</label>
-      <select name="sexo" class="form-select">
-        <option value="todos" {% if filtro_sexo=='todos' %}selected{% endif %}>Todos</option>
-        <option value="Hombre" {% if filtro_sexo=='Hombre' %}selected{% endif %}>Chicos</option>
-        <option value="Mujer" {% if filtro_sexo=='Mujer' %}selected{% endif %}>Chicas</option>
+      <label class="form-label">Líder</label>
+      <select name="lider" class="form-select">
+        <option value="todos" {% if filtro_lider=='todos' %}selected{% endif %}>Todos</option>
+        {% for item in lideres %}
+        <option value="{{ item }}" {% if filtro_lider==item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="col-md-2 align-self-end">

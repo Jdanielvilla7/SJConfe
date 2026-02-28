@@ -163,26 +163,23 @@ def dashboard():
 
     total = mongo.db.asistentes.count_documents({})
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
-    pre = mongo.db.asistentes.count_documents({'pre_registro': True})
-    pre_check = mongo.db.asistentes.count_documents({
-    'pre_registro': True,
-    'checked_in': True})
-    pre = pre - pre_check
     pendientes = total - registrados 
-    pendientes_sin_pre = pendientes - pre
+    pendientes_sin_pre = pendientes
     porcentaje = round(((registrados ) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos_especiales.count_documents({})
 
-    tipo = request.args.get('boleto', 'todos')
-    sexo = request.args.get('sexo', 'todos')
+    cabana = request.args.get('cabana', 'todos')
+    lider = request.args.get('lider', 'todos')
 
     filtro = {}
-    if tipo != 'todos': 
-        filtro['boleto'] = tipo
-    if sexo != 'todos':
-        filtro['sexo'] = sexo
+    if cabana != 'todos': 
+        filtro['cabana'] = cabana
+    if lider != 'todos':
+        filtro['lider'] = lider
 
     asistentes = list(mongo.db.asistentes.find(filtro, {'edad': 1}))
+    cabanas = sorted([item for item in mongo.db.asistentes.distinct('cabana') if item])
+    lideres = sorted([item for item in mongo.db.asistentes.distinct('lider') if item])
 
     def obtener_edad(asistente):
         try:
@@ -203,11 +200,13 @@ def dashboard():
     return render_template(
         'dashboard.html',
         datos_segmentos=datos_segmentos, 
-        filtro_tipo=tipo, 
-        filtro_sexo=sexo,
+        filtro_cabana=cabana,
+        filtro_lider=lider,
+        cabanas=cabanas,
+        lideres=lideres,
         total=total,
         registrados=registrados,
-        preregistro=pre,
+        preregistro=0,
         pendientes=pendientes,
         porcentaje=porcentaje,
         casos_especiales=casos_especiales,
@@ -239,8 +238,15 @@ def cargar_asistentes():
                 insertados = 0
                 duplicados = 0
 
+                def valor_columna(fila, *columnas):
+                    for columna in columnas:
+                        valor = fila.get(columna, "")
+                        if not pd.isna(valor) and str(valor).strip() != "":
+                            return str(valor).strip()
+                    return ""
+
                 for _, fila in df.iterrows():
-                    ticket_id = str(fila.get("RegistrationID", "")).strip()
+                    ticket_id = valor_columna(fila, "RegistrationID")
 
                     if not ticket_id:
                         continue  # omitir filas vacías
@@ -250,52 +256,19 @@ def cargar_asistentes():
                         duplicados += 1
                         continue
 
-                    # boleto_raw = str(fila.get("Boleto del evento", "")).strip()
-                    # if "voluntario" in boleto_raw.lower():
-                    #     boleto = boleto_raw  # conserva el valor original si es voluntario
-                    # elif "Training Días: 25, 26, 27" in boleto_raw:
-                    #     boleto = "Completo"
-                    # else:
-                    #     boleto = "Basico"
-
-                    # Robust parsing for fecha_nacimiento: handle empty/NaN values and several common formats
-                    raw_fecha = fila.get("¿Fecha de nacimiento", "")
-                    fecha_nacimiento = None
-                    try:
-                        # pandas may return NaN for missing values
-                        if pd.isna(raw_fecha) or str(raw_fecha).strip() == "":
-                            fecha_nacimiento = None
-                        else:
-                            if isinstance(raw_fecha, datetime):
-                                fecha_nacimiento = raw_fecha.date()
-                            else:
-                                fecha_str = str(raw_fecha).strip()
-                                for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
-                                    try:
-                                        fecha_nacimiento = datetime.strptime(fecha_str, fmt).date()
-                                        break
-                                    except Exception:
-                                        continue
-                    except Exception:
-                        fecha_nacimiento = None
-
                     asistente = {
                         "ticket_id": ticket_id,
-                        "nombre": str(fila.get("Asistente", "")).strip(),
-                        "telefono": str(fila.get("Teléfono", "")).strip(),
-                        "correo": str(fila.get("Email", "")).strip(),
-                        "nombre_completo": str(fila.get("Nombre y apellido", "")).strip(),
-                        "sexo": str(fila.get("Sexo", "")).strip(),
-                        "edad": str(fila.get("Edad", "")).strip(),
-                        "fecha_nacimiento": fecha_nacimiento,
-                        "telefono_whatsapp": str(fila.get("Teléfono", "")).strip(),
-                        "punto_vidareal": str(fila.get("Punto Vida Real.tv al que asistes", "")).strip(),
-                        "talla": str(fila.get("Talla de playera", "")).strip(),
-                        "bautizado": str(fila.get("¿Estás Bautizado?", "")).strip(),
-                        "nada": str(fila.get("¿Sabes Nadar?", "")).strip(),
-                        "contacto": str(fila.get("Nombre completo de tu papá / mamá", "")).strip(),                        
-                        "telefono_contacto": str(fila.get("Número de tu papá / mamá", "")).strip(),
-                        "correo_contacto": str(fila.get("Correo electrónico de tu papá / mamá", "")).strip()
+                        "cabana": valor_columna(fila, "Cabaña", "Cabana"),
+                        "nombre": valor_columna(fila, "Nombre"),
+                        "lider": valor_columna(fila, "Lider", "Líder"),
+                        "correo": valor_columna(fila, "Correo"),
+                        "registro": valor_columna(fila, "Registro"),
+                        "edad": valor_columna(fila, "Edad"),
+                        "telefono": valor_columna(fila, "Telefono", "Teléfono"),
+                        "alergias": valor_columna(fila, "alergias", "Alergias"),
+                        "alimentos": valor_columna(fila, "alimentos", "Alimentos"),
+                        "medicamentos": valor_columna(fila, "medicamentos", "Medicamentos"),
+                        "nada": valor_columna(fila, "nada", "Nada")
                     }
 
                     mongo.db.asistentes.insert_one(asistente)
@@ -379,7 +352,9 @@ def checkout():
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
-                    {'nombre_completo': {'$regex': query, '$options': 'i'}},
+                    {'lider': {'$regex': query, '$options': 'i'}},
+                    {'cabana': {'$regex': query, '$options': 'i'}},
+                    {'telefono': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
                 }))
@@ -404,7 +379,9 @@ def checkin_manual():
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
-                    {'nombre_completo': {'$regex': query, '$options': 'i'}},
+                    {'lider': {'$regex': query, '$options': 'i'}},
+                    {'cabana': {'$regex': query, '$options': 'i'}},
+                    {'telefono': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
             }))
