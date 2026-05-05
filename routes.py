@@ -76,6 +76,25 @@ def acceso_requerido(f):
         return f(*args, **kwargs)
     return decorada
 
+def token_bearer_requerido(f):
+    """Decorador para validar Bearer Token en requests API"""
+    @wraps(f)
+    def decorada(*args, **kwargs):
+        # Obtener token del header Authorization
+        auth_header = request.headers.get('Authorization', '')
+        
+        if not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Autenticación requerida. Usar: Authorization: Bearer <token>'}), 401
+        
+        token_recibido = auth_header[7:]  # Elimina "Bearer "
+        token_esperado = os.getenv('API_TOKEN', 'default_token_change_me')
+        
+        if token_recibido != token_esperado:
+            return jsonify({'error': 'Token inválido o expirado'}), 403
+        
+        return f(*args, **kwargs)
+    return decorada
+
 # MODELO DE USUARIO
 class Usuario:
     def __init__(self, user_data):
@@ -293,6 +312,115 @@ def ver_asistentes():
 
     asistentes = list(mongo.db.asistentes.find())
     return render_template('asistentes.html', asistentes=asistentes)
+
+
+# ENDPOINT API: Registrar asistentes via Bearer Token
+@routes.route('/api/asistentes', methods=['POST'])
+@token_bearer_requerido
+def registrar_asistentes_api():
+    """
+    Endpoint API para registrar asistentes con autenticación Bearer Token.
+    Genera automáticamente el ticket_id para cada asistente.
+    
+    Esperado: JSON con estructura:
+    {
+        "asistentes": [
+            {
+                "nombre": "string (requerido)",
+                "cabana": "string",
+                "lider": "string",
+                "correo": "string",
+                "registro": "string",
+                "edad": "string/int",
+                "telefono": "string",
+                "alergias": "string",
+                "alimentos": "string",
+                "medicamentos": "string",
+                "nada": "string"
+            }
+        ]
+    }
+    
+    Respuesta: JSON con resultado de inserción e IDs generados
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'JSON vacío'}), 400
+        
+        asistentes_data = data.get('asistentes', [])
+        
+        if not asistentes_data:
+            return jsonify({'error': 'El campo "asistentes" es requerido y debe ser una lista'}), 400
+        
+        if not isinstance(asistentes_data, list):
+            return jsonify({'error': 'El campo "asistentes" debe ser una lista'}), 400
+        
+        insertados = 0
+        errores = []
+        asistentes_registrados = []
+        
+        for idx, asistente in enumerate(asistentes_data):
+            try:
+                # Validar nombre (requerido)
+                nombre = asistente.get('nombre', '').strip()
+                
+                if not nombre:
+                    errores.append(f"Registro {idx}: nombre es requerido")
+                    continue
+                
+                # Generar ticket_id único
+                ticket_id = str(uuid.uuid4())
+                
+                # Construir documento del asistente
+                nuevo_asistente = {
+                    'ticket_id': ticket_id,
+                    'nombre': nombre,
+                    'cabana': asistente.get('cabana', '').strip(),
+                    'lider': asistente.get('lider', '').strip(),
+                    'correo': asistente.get('correo', '').strip(),
+                    'registro': asistente.get('registro', '').strip(),
+                    'edad': asistente.get('edad', ''),
+                    'telefono': asistente.get('telefono', '').strip(),
+                    'alergias': asistente.get('alergias', '').strip(),
+                    'alimentos': asistente.get('alimentos', '').strip(),
+                    'medicamentos': asistente.get('medicamentos', '').strip(),
+                    'nada': asistente.get('nada', '').strip(),
+                    'checked_in': False,
+                    'fecha_registro_api': datetime.now(pytz.timezone('America/Guatemala'))
+                }
+                
+                mongo.db.asistentes.insert_one(nuevo_asistente)
+                insertados += 1
+                
+                # Agregar a respuesta con ticket_id generado
+                asistentes_registrados.append({
+                    'nombre': nombre,
+                    'ticket_id': ticket_id,
+                    'correo': asistente.get('correo', '').strip()
+                })
+                
+            except Exception as e:
+                errores.append(f"Registro {idx}: {str(e)}")
+        
+        respuesta = {
+            'exitoso': True,
+            'insertados': insertados,
+            'total_procesados': len(asistentes_data),
+            'asistentes': asistentes_registrados,
+            'errores': errores if errores else None
+        }
+        
+        logging.info(f"API: {insertados} asistentes registrados")
+        
+        return jsonify(respuesta), 201
+    
+    except Exception as e:
+        logging.error(f"Error en /api/asistentes: {str(e)}")
+        return jsonify({'error': f'Error al procesar la solicitud: {str(e)}'}), 500
+
+
 
 from datetime import datetime
 
