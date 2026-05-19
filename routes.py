@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, session, flash, jsonify, sessions,current_app
+from flask import Blueprint, render_template, redirect, url_for, request, session, flash, jsonify, sessions, current_app, send_file
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
@@ -11,12 +11,20 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 import pandas as pd
 import os
+import smtplib
 import uuid
 import pandas as pd
 from extensions import mongo, app
 from functools import wraps
+from io import BytesIO
 from flask import abort
 import logging
+from email.message import EmailMessage
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from reportlab.graphics.barcode import code128
+import qrcode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,6 +102,235 @@ def token_bearer_requerido(f):
         
         return f(*args, **kwargs)
     return decorada
+
+
+TICKET_TEMPLATE_PATH = os.path.join(app.root_path, 'Boleto.pdf')
+TICKET_GRID_STEP = 50
+
+# Adjust these coordinates after reviewing the grid overlay.
+TICKET_FIELD_COORDS = {
+    'evento_fecha_hora': {'x': 32.25, 'y_listado': 58.59, 'font': 'Helvetica-Bold', 'size': 10},
+    'evento_nombre': {'x': 32.25, 'y_listado': 87.93, 'font': 'Helvetica-Bold', 'size': 20},
+    'evento_direccion': {'x': 32.25, 'y_listado': 129.09, 'font': 'Helvetica', 'size': 10},
+    'evento_pais': {'x': 32.25, 'y_listado': 147.09, 'font': 'Helvetica', 'size': 10, 'color': (0.5, 0.5, 0.5)},
+    'nombre_cliente': {'x': 32.25, 'y_listado': 176.17, 'font': 'Helvetica', 'size': 12},
+    'evento_footer': {
+        'x_center': 297.385,
+        'y_listado': 827.65,
+        'font': 'Helvetica',
+        'size': 8,
+        'align': 'center'
+    },
+}
+
+TICKET_QR_COORDS = {'x': 481.50, 'y_listado_bottom': 125.25, 'size': 87}
+TICKET_BARCODE_COORDS = {
+    'x': 492.00,
+    'y_listado_bottom': 252.75,
+    'width': 63,
+    'height': 126
+}
+
+
+def _get_template_page():
+    if not os.path.exists(TICKET_TEMPLATE_PATH):
+        raise FileNotFoundError('Boleto.pdf no existe en la raiz del proyecto')
+
+    reader = PdfReader(TICKET_TEMPLATE_PATH)
+    if not reader.pages:
+        raise ValueError('Boleto.pdf no tiene paginas')
+
+    page = reader.pages[0]
+    width = float(page.mediabox.width)
+    height = float(page.mediabox.height)
+    return reader, page, width, height
+
+
+def _draw_grid(canvas_obj, width, height, step):
+    canvas_obj.setStrokeColorRGB(0.85, 0.85, 0.85)
+    canvas_obj.setFont('Helvetica', 6)
+
+    for x in range(0, int(width) + 1, step):
+        canvas_obj.line(x, 0, x, height)
+        canvas_obj.drawString(x + 2, 2, str(x))
+
+    for y in range(0, int(height) + 1, step):
+        canvas_obj.line(0, y, width, y)
+        canvas_obj.drawString(2, y + 2, str(y))
+
+
+def _to_rl_y(y_listado, height):
+    return height - y_listado
+
+
+def _build_qr_image(ticket_id):
+    qr = qrcode.QRCode(
+        version=2,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=6,
+        border=2
+    )
+    qr.add_data(ticket_id)
+    qr.make(fit=True)
+    return qr.make_image(fill_color='black', back_color='white')
+
+
+def _draw_barcode(canvas_obj, ticket_id, box_x, box_y, box_width, box_height):
+    barcode = code128.Code128(ticket_id, barHeight=box_width, barWidth=1)
+    target_width = box_height
+    target_height = box_width
+
+    scale_x = target_width / barcode.width
+    scale_y = target_height / barcode.height
+    scale = min(scale_x, scale_y)
+
+    offset_x = (target_width - barcode.width * scale) / 2
+    offset_y = (target_height - barcode.height * scale) / 2
+
+    canvas_obj.saveState()
+    canvas_obj.translate(box_x, box_y + box_height)
+    canvas_obj.rotate(-90)
+    canvas_obj.scale(scale, scale)
+    barcode.drawOn(canvas_obj, offset_x, offset_y)
+    canvas_obj.restoreState()
+
+
+def generate_ticket_pdf_bytes(
+    nombre_cliente,
+    evento_nombre,
+    evento_direccion,
+    evento_fecha_hora,
+    ticket_id,
+    evento_pais=None,
+    evento_footer=None,
+    debug_grid=False
+):
+    reader, page, width, height = _get_template_page()
+
+    packet = BytesIO()
+    canvas_obj = canvas.Canvas(packet, pagesize=(width, height))
+
+    if debug_grid:
+        _draw_grid(canvas_obj, width, height, TICKET_GRID_STEP)
+
+    fields = {
+        'evento_fecha_hora': evento_fecha_hora,
+        'evento_nombre': evento_nombre,
+        'evento_direccion': evento_direccion,
+        'evento_pais': evento_pais,
+        'nombre_cliente': nombre_cliente,
+        'evento_footer': evento_footer
+    }
+
+    for key, value in fields.items():
+        if not value:
+            continue
+        config = TICKET_FIELD_COORDS.get(key)
+        if not config:
+            continue
+        canvas_obj.setFont(config['font'], config['size'])
+        color = config.get('color')
+        if color:
+            canvas_obj.setFillColorRGB(*color)
+        else:
+            canvas_obj.setFillColorRGB(0, 0, 0)
+
+        y = _to_rl_y(config['y_listado'], height)
+        if config.get('align') == 'center':
+            canvas_obj.drawCentredString(config['x_center'], y, str(value))
+        else:
+            canvas_obj.drawString(config['x'], y, str(value))
+
+    qr_image = _build_qr_image(ticket_id)
+    qr_buffer = BytesIO()
+    qr_image.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    qr_reader = ImageReader(qr_buffer)
+
+    qr_y = _to_rl_y(TICKET_QR_COORDS['y_listado_bottom'], height)
+    canvas_obj.drawImage(
+        qr_reader,
+        TICKET_QR_COORDS['x'],
+        qr_y,
+        width=TICKET_QR_COORDS['size'],
+        height=TICKET_QR_COORDS['size'],
+        mask='auto'
+    )
+
+    barcode_y = _to_rl_y(TICKET_BARCODE_COORDS['y_listado_bottom'], height)
+    _draw_barcode(
+        canvas_obj,
+        ticket_id,
+        TICKET_BARCODE_COORDS['x'],
+        barcode_y,
+        TICKET_BARCODE_COORDS['width'],
+        TICKET_BARCODE_COORDS['height']
+    )
+
+    canvas_obj.save()
+    packet.seek(0)
+
+    overlay = PdfReader(packet)
+    page.merge_page(overlay.pages[0])
+
+    writer = PdfWriter()
+    writer.add_page(page)
+
+    output = BytesIO()
+    writer.write(output)
+    output.seek(0)
+    return output.read()
+
+
+def generate_template_grid_pdf_bytes():
+    reader, page, width, height = _get_template_page()
+    packet = BytesIO()
+    canvas_obj = canvas.Canvas(packet, pagesize=(width, height))
+    _draw_grid(canvas_obj, width, height, TICKET_GRID_STEP)
+    canvas_obj.save()
+    packet.seek(0)
+
+    overlay = PdfReader(packet)
+    page.merge_page(overlay.pages[0])
+
+    writer = PdfWriter()
+    writer.add_page(page)
+    output = BytesIO()
+    writer.write(output)
+    output.seek(0)
+    return output.read()
+
+
+def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
+    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(os.getenv('SMTP_PORT', '587'))
+    smtp_user = os.getenv('SMTP_USER')
+    smtp_password = os.getenv('SMTP_PASSWORD')
+    smtp_from = os.getenv('SMTP_FROM', smtp_user)
+
+    if not smtp_user or not smtp_password:
+        raise ValueError('SMTP_USER y SMTP_PASSWORD son requeridos')
+
+    subject = os.getenv('TICKET_EMAIL_SUBJECT', 'Tu ticket para el evento')
+    body_template = os.getenv(
+        'TICKET_EMAIL_BODY',
+        'Hola {nombre}, adjunto esta tu ticket. Presenta el QR al ingresar.'
+    )
+    body = body_template.format(nombre=nombre_cliente, ticket_id=ticket_id)
+
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = smtp_from
+    msg['To'] = destinatario
+    msg.set_content(body)
+
+    filename = f'ticket_{ticket_id}.pdf'
+    msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
 
 # MODELO DE USUARIO
 class Usuario:
@@ -320,16 +557,22 @@ def ver_asistentes():
 def registrar_asistentes_api():
     """
     Endpoint API para registrar asistentes con autenticación Bearer Token.
-    Genera automáticamente el ticket_id para cada asistente.
+    Genera automáticamente el ticket_id para cada asistente, crea el PDF
+    del ticket usando Boleto.pdf y lo envía por correo.
     
     Esperado: JSON con estructura:
     {
+        "evento": {
+            "nombre": "string (requerido)",
+            "direccion": "string (requerido)",
+            "fecha_hora": "string (requerido)"
+        },
         "asistentes": [
             {
                 "nombre": "string (requerido)",
+                "correo": "string (requerido)",
                 "cabana": "string",
                 "lider": "string",
-                "correo": "string",
                 "registro": "string",
                 "edad": "string/int",
                 "telefono": "string",
@@ -357,6 +600,18 @@ def registrar_asistentes_api():
         if not isinstance(asistentes_data, list):
             return jsonify({'error': 'El campo "asistentes" debe ser una lista'}), 400
         
+        evento = data.get('evento', {})
+        evento_nombre = (evento.get('nombre') or '').strip()
+        evento_direccion = (evento.get('direccion') or '').strip()
+        evento_fecha_hora = (evento.get('fecha_hora') or '').strip()
+        evento_pais = (evento.get('pais') or os.getenv('EVENTO_PAIS', 'Guatemala')).strip()
+        evento_footer = (evento.get('footer') or os.getenv('EVENTO_FOOTER', 'Instituto CRUX')).strip()
+
+        if not evento_nombre or not evento_direccion or not evento_fecha_hora:
+            return jsonify({
+                'error': 'El objeto "evento" es requerido con nombre, direccion y fecha_hora'
+            }), 400
+
         insertados = 0
         errores = []
         asistentes_registrados = []
@@ -365,13 +620,29 @@ def registrar_asistentes_api():
             try:
                 # Validar nombre (requerido)
                 nombre = asistente.get('nombre', '').strip()
+
+                correo = asistente.get('correo', '').strip()
                 
                 if not nombre:
                     errores.append(f"Registro {idx}: nombre es requerido")
                     continue
+
+                if not correo:
+                    errores.append(f"Registro {idx}: correo es requerido")
+                    continue
                 
-                # Generar ticket_id único
+                # Generar ticket_id unico
                 ticket_id = str(uuid.uuid4())
+
+                pdf_bytes = generate_ticket_pdf_bytes(
+                    nombre_cliente=nombre,
+                    evento_nombre=evento_nombre,
+                    evento_direccion=evento_direccion,
+                    evento_fecha_hora=evento_fecha_hora,
+                    ticket_id=ticket_id,
+                    evento_pais=evento_pais,
+                    evento_footer=evento_footer
+                )
                 
                 # Construir documento del asistente
                 nuevo_asistente = {
@@ -379,7 +650,7 @@ def registrar_asistentes_api():
                     'nombre': nombre,
                     'cabana': asistente.get('cabana', '').strip(),
                     'lider': asistente.get('lider', '').strip(),
-                    'correo': asistente.get('correo', '').strip(),
+                    'correo': correo,
                     'registro': asistente.get('registro', '').strip(),
                     'edad': asistente.get('edad', ''),
                     'telefono': asistente.get('telefono', '').strip(),
@@ -387,18 +658,49 @@ def registrar_asistentes_api():
                     'alimentos': asistente.get('alimentos', '').strip(),
                     'medicamentos': asistente.get('medicamentos', '').strip(),
                     'nada': asistente.get('nada', '').strip(),
+                    'evento': {
+                        'nombre': evento_nombre,
+                        'direccion': evento_direccion,
+                        'fecha_hora': evento_fecha_hora,
+                        'pais': evento_pais,
+                        'footer': evento_footer
+                    },
                     'checked_in': False,
                     'fecha_registro_api': datetime.now(pytz.timezone('America/Guatemala'))
                 }
-                
-                mongo.db.asistentes.insert_one(nuevo_asistente)
+
+                insert_result = mongo.db.asistentes.insert_one(nuevo_asistente)
                 insertados += 1
+
+                email_enviado = True
+                email_error = None
+
+                try:
+                    enviar_ticket_email(correo, nombre, pdf_bytes, ticket_id)
+                except Exception as e:
+                    email_enviado = False
+                    email_error = str(e)
+
+                update_payload = {
+                    'email_enviado': email_enviado,
+                    'email_enviado_en': datetime.now(pytz.timezone('America/Guatemala')) if email_enviado else None,
+                    'email_error': email_error
+                }
+
+                mongo.db.asistentes.update_one(
+                    {'_id': insert_result.inserted_id},
+                    {'$set': update_payload}
+                )
+
+                if not email_enviado:
+                    errores.append(f"Registro {idx}: error al enviar correo - {email_error}")
                 
                 # Agregar a respuesta con ticket_id generado
                 asistentes_registrados.append({
                     'nombre': nombre,
                     'ticket_id': ticket_id,
-                    'correo': asistente.get('correo', '').strip()
+                    'correo': correo,
+                    'email_enviado': email_enviado
                 })
                 
             except Exception as e:
@@ -419,6 +721,22 @@ def registrar_asistentes_api():
     except Exception as e:
         logging.error(f"Error en /api/asistentes: {str(e)}")
         return jsonify({'error': f'Error al procesar la solicitud: {str(e)}'}), 500
+
+
+@routes.route('/api/ticket-template-grid', methods=['GET'])
+@token_bearer_requerido
+def descargar_template_grid():
+    try:
+        pdf_bytes = generate_template_grid_pdf_bytes()
+        return send_file(
+            BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='Boleto_grid.pdf'
+        )
+    except Exception as e:
+        logging.error(f"Error al generar grid del template: {str(e)}")
+        return jsonify({'error': f'No se pudo generar el grid: {str(e)}'}), 500
 
 
 
