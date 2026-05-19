@@ -20,7 +20,6 @@ from io import BytesIO
 from flask import abort
 import logging
 from email.message import EmailMessage
-from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.graphics.barcode import code128
@@ -104,8 +103,22 @@ def token_bearer_requerido(f):
     return decorada
 
 
-TICKET_TEMPLATE_PATH = os.path.join(app.root_path, 'Boleto.pdf')
+TICKET_PAGE_WIDTH = 595.0
+TICKET_PAGE_HEIGHT = 842.0
 TICKET_GRID_STEP = 50
+
+TICKET_BORDER = {
+    'x0': 17.25,
+    'y0': 30.00,
+    'x1': 577.50,
+    'y1': 271.50
+}
+
+TICKET_SEPARATOR = {
+    'x': 474.75,
+    'y0': 39.75,
+    'y1': 261.75
+}
 
 # Adjust these coordinates after reviewing the grid overlay.
 TICKET_FIELD_COORDS = {
@@ -132,20 +145,6 @@ TICKET_BARCODE_COORDS = {
 }
 
 
-def _get_template_page():
-    if not os.path.exists(TICKET_TEMPLATE_PATH):
-        raise FileNotFoundError('Boleto.pdf no existe en la raiz del proyecto')
-
-    reader = PdfReader(TICKET_TEMPLATE_PATH)
-    if not reader.pages:
-        raise ValueError('Boleto.pdf no tiene paginas')
-
-    page = reader.pages[0]
-    width = float(page.mediabox.width)
-    height = float(page.mediabox.height)
-    return reader, page, width, height
-
-
 def _draw_grid(canvas_obj, width, height, step):
     canvas_obj.setStrokeColorRGB(0.85, 0.85, 0.85)
     canvas_obj.setFont('Helvetica', 6)
@@ -159,8 +158,33 @@ def _draw_grid(canvas_obj, width, height, step):
         canvas_obj.drawString(2, y + 2, str(y))
 
 
-def _to_rl_y(y_listado, height):
+def _to_rl_y(y_listado, height=TICKET_PAGE_HEIGHT):
     return height - y_listado
+
+
+def _rect_from_listado(x0, y0, x1, y1):
+    y_top = _to_rl_y(y0)
+    y_bottom = _to_rl_y(y1)
+    return x0, y_bottom, x1 - x0, y_top - y_bottom
+
+
+def _draw_ticket_frame(canvas_obj):
+    x, y, width, height = _rect_from_listado(
+        TICKET_BORDER['x0'],
+        TICKET_BORDER['y0'],
+        TICKET_BORDER['x1'],
+        TICKET_BORDER['y1']
+    )
+
+    canvas_obj.setStrokeColorRGB(0, 0, 0)
+    canvas_obj.setLineWidth(1)
+    canvas_obj.rect(x, y, width, height, stroke=1, fill=0)
+
+    line_y0 = _to_rl_y(TICKET_SEPARATOR['y0'])
+    line_y1 = _to_rl_y(TICKET_SEPARATOR['y1'])
+    canvas_obj.setDash(2, 2)
+    canvas_obj.line(TICKET_SEPARATOR['x'], line_y0, TICKET_SEPARATOR['x'], line_y1)
+    canvas_obj.setDash()
 
 
 def _build_qr_image(ticket_id):
@@ -205,13 +229,13 @@ def generate_ticket_pdf_bytes(
     evento_footer=None,
     debug_grid=False
 ):
-    reader, page, width, height = _get_template_page()
-
     packet = BytesIO()
-    canvas_obj = canvas.Canvas(packet, pagesize=(width, height))
+    canvas_obj = canvas.Canvas(packet, pagesize=(TICKET_PAGE_WIDTH, TICKET_PAGE_HEIGHT))
 
     if debug_grid:
-        _draw_grid(canvas_obj, width, height, TICKET_GRID_STEP)
+        _draw_grid(canvas_obj, TICKET_PAGE_WIDTH, TICKET_PAGE_HEIGHT, TICKET_GRID_STEP)
+
+    _draw_ticket_frame(canvas_obj)
 
     fields = {
         'evento_fecha_hora': evento_fecha_hora,
@@ -235,7 +259,7 @@ def generate_ticket_pdf_bytes(
         else:
             canvas_obj.setFillColorRGB(0, 0, 0)
 
-        y = _to_rl_y(config['y_listado'], height)
+        y = _to_rl_y(config['y_listado'])
         if config.get('align') == 'center':
             canvas_obj.drawCentredString(config['x_center'], y, str(value))
         else:
@@ -247,7 +271,7 @@ def generate_ticket_pdf_bytes(
     qr_buffer.seek(0)
     qr_reader = ImageReader(qr_buffer)
 
-    qr_y = _to_rl_y(TICKET_QR_COORDS['y_listado_bottom'], height)
+    qr_y = _to_rl_y(TICKET_QR_COORDS['y_listado_bottom'])
     canvas_obj.drawImage(
         qr_reader,
         TICKET_QR_COORDS['x'],
@@ -257,7 +281,7 @@ def generate_ticket_pdf_bytes(
         mask='auto'
     )
 
-    barcode_y = _to_rl_y(TICKET_BARCODE_COORDS['y_listado_bottom'], height)
+    barcode_y = _to_rl_y(TICKET_BARCODE_COORDS['y_listado_bottom'])
     _draw_barcode(
         canvas_obj,
         ticket_id,
@@ -269,36 +293,17 @@ def generate_ticket_pdf_bytes(
 
     canvas_obj.save()
     packet.seek(0)
-
-    overlay = PdfReader(packet)
-    page.merge_page(overlay.pages[0])
-
-    writer = PdfWriter()
-    writer.add_page(page)
-
-    output = BytesIO()
-    writer.write(output)
-    output.seek(0)
-    return output.read()
+    return packet.read()
 
 
 def generate_template_grid_pdf_bytes():
-    reader, page, width, height = _get_template_page()
     packet = BytesIO()
-    canvas_obj = canvas.Canvas(packet, pagesize=(width, height))
-    _draw_grid(canvas_obj, width, height, TICKET_GRID_STEP)
+    canvas_obj = canvas.Canvas(packet, pagesize=(TICKET_PAGE_WIDTH, TICKET_PAGE_HEIGHT))
+    _draw_grid(canvas_obj, TICKET_PAGE_WIDTH, TICKET_PAGE_HEIGHT, TICKET_GRID_STEP)
+    _draw_ticket_frame(canvas_obj)
     canvas_obj.save()
     packet.seek(0)
-
-    overlay = PdfReader(packet)
-    page.merge_page(overlay.pages[0])
-
-    writer = PdfWriter()
-    writer.add_page(page)
-    output = BytesIO()
-    writer.write(output)
-    output.seek(0)
-    return output.read()
+    return packet.read()
 
 
 def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
