@@ -94,7 +94,7 @@ def token_bearer_requerido(f):
             return jsonify({'error': 'Autenticación requerida. Usar: Authorization: Bearer <token>'}), 401
         
         token_recibido = auth_header[7:]  # Elimina "Bearer "
-        token_esperado = os.getenv('API_TOKEN', 'default_token_change_me')
+        token_esperado = os.getenv('API_TOKEN', 'ads5Kl6dK_4iZ-4kYbpChMH3AtGsIyW1egNqbOC6gqo')
         
         if token_recibido != token_esperado:
             return jsonify({'error': 'Token inválido o expirado'}), 403
@@ -307,11 +307,16 @@ def generate_template_grid_pdf_bytes():
 
 
 def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
-    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('SMTP_PORT', '587'))
-    smtp_user = os.getenv('SMTP_USER')
-    smtp_password = os.getenv('SMTP_PASSWORD')
-    smtp_from = os.getenv('SMTP_FROM', smtp_user)
+    # smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    # smtp_port = int(os.getenv('SMTP_PORT', '587'))
+    # smtp_user = os.getenv('SMTP_USER','cursos@institutocrux.org')
+    # smtp_password = os.getenv('SMTP_PASSWORD','njdm tisa qhuk jamx')
+    # smtp_from = os.getenv('SMTP_FROM', smtp_user)
+    smtp_host = 'smtp.gmail.com'
+    smtp_port = 587
+    smtp_user = 'atejada@institutocrux.org'
+    smtp_password = 'njdmtisaqhukjamx'
+    smtp_from = 'cursos@institutocrux.org'
 
     if not smtp_user or not smtp_password:
         raise ValueError('SMTP_USER y SMTP_PASSWORD son requeridos')
@@ -333,7 +338,9 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
 
     with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.ehlo()
         server.starttls()
+        server.ehlo()
         server.login(smtp_user, smtp_password)
         server.send_message(msg)
 
@@ -605,12 +612,12 @@ def registrar_asistentes_api():
         if not isinstance(asistentes_data, list):
             return jsonify({'error': 'El campo "asistentes" debe ser una lista'}), 400
         
-        evento = data.get('evento', {})
-        evento_nombre = (evento.get('nombre') or '').strip()
-        evento_direccion = (evento.get('direccion') or '').strip()
-        evento_fecha_hora = (evento.get('fecha_hora') or '').strip()
-        evento_pais = (evento.get('pais') or os.getenv('EVENTO_PAIS', 'Guatemala')).strip()
-        evento_footer = (evento.get('footer') or os.getenv('EVENTO_FOOTER', 'Instituto CRUX')).strip()
+        
+        evento_nombre = 'Congreso Cristiana Mente'
+        evento_direccion = 'Centro de Convenciones Ilumina z10'
+        evento_fecha_hora = '2026-08-01'        
+        evento_pais =   'Guatemala'
+        evento_footer = 'Instituto CRUX'
 
         if not evento_nombre or not evento_direccion or not evento_fecha_hora:
             return jsonify({
