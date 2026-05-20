@@ -336,13 +336,19 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
 
     filename = f'ticket_{ticket_id}.pdf'
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
-
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
         server.ehlo()
         server.starttls()
         server.ehlo()
         server.login(smtp_user, smtp_password)
-        server.send_message(msg)
+
+    print("Login Gmail SMTP OK")
+    # with smtplib.SMTP(smtp_host, smtp_port) as server:
+    #     server.ehlo()
+    #     server.starttls()
+    #     server.ehlo()
+    #     server.login(smtp_user, smtp_password)
+    #     server.send_message(msg)
 
 # MODELO DE USUARIO
 class Usuario:
