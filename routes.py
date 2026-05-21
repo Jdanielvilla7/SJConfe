@@ -322,18 +322,138 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
         raise ValueError('SMTP_USER y SMTP_PASSWORD son requeridos')
 
     subject = os.getenv('TICKET_EMAIL_SUBJECT', 'Tu ticket para el evento')
-    body_template = os.getenv(
-        'TICKET_EMAIL_BODY',
-        'Hola {nombre}, adjunto esta tu ticket. Presenta el QR al ingresar.'
-    )
-    body = body_template.format(nombre=nombre_cliente, ticket_id=ticket_id)
+    body_template = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Congreso Cristianamente</title>
+    </head>
+
+    <body style="margin:0; padding:0; background-color:#f3f1ee; font-family:Arial, Helvetica, sans-serif; color:#5f5f5f;">
+
+    <!-- Preheader oculto -->
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
+        Tu ticket para el Congreso Cristianamente está adjunto en este correo.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f1ee; padding:32px 12px;">
+        <tr>
+        <td align="center">
+
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px; background-color:#ffffff; border-radius:18px; overflow:hidden; box-shadow:0 10px 28px rgba(0,0,0,0.10);">
+
+            <!-- Header -->
+            <tr>
+                <td style="background-color:#ffffff; padding:34px 32px 24px; text-align:center;">
+                <img 
+                    src="https://institutocrux.org/wp-content/uploads/2025/06/cropped-LogoWEB-scaled-1-2048x794.png" 
+                    alt="Instituto CRUX"
+                    width="260"
+                    style="display:block; margin:0 auto; max-width:260px; width:100%; height:auto;"
+                >
+                </td>
+            </tr>
+
+            <!-- Banda naranja -->
+            <tr>
+                <td style="background-color:#f36b16; padding:26px 30px; text-align:center;">
+                <h1 style="margin:0; color:#ffffff; font-size:26px; line-height:1.25; font-weight:700;">
+                    Congreso Cristianamente
+                </h1>
+                <p style="margin:8px 0 0; color:#fff3eb; font-size:15px; line-height:1.5;">
+                    Tu inscripción ha sido confirmada
+                </p>
+                </td>
+            </tr>
+
+            <!-- Contenido -->
+            <tr>
+                <td style="padding:36px 34px 28px;">
+
+                <p style="margin:0 0 20px; font-size:17px; line-height:1.7; color:#4b4b4b;">
+                    Hola <strong style="color:#f36b16;">{nombre_cliente}</strong>:
+                </p>
+
+                <p style="margin:0 0 18px; font-size:16px; line-height:1.7; color:#5f5f5f;">
+                    Nos alegra que seas parte del <strong>Congreso Cristianamente</strong>.
+                </p>
+
+                <p style="margin:0 0 20px; font-size:16px; line-height:1.7; color:#5f5f5f;">
+                    Adjunto encontrarás el ticket correspondiente a tu inscripción. 
+                    Presenta el código QR el día del evento para ingresar.
+                </p>
+
+                <!-- Caja destacada -->
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+                    <tr>
+                    <td style="background-color:#fff4ed; border-left:5px solid #f36b16; padding:18px 20px; border-radius:12px;">
+                        <p style="margin:0; font-size:15px; line-height:1.6; color:#5f5f5f;">
+                        <strong style="color:#f36b16;">Importante:</strong>
+                        lleva tu ticket disponible en tu celular o impreso para facilitar tu ingreso al evento.
+                        </p>
+                    </td>
+                    </tr>
+                </table>
+
+                <p style="margin:0 0 18px; font-size:16px; line-height:1.7; color:#5f5f5f;">
+                    Si tienes alguna duda o necesitas apoyo, puedes comunicarte con nosotros al:
+                </p>
+
+                <!-- Botón WhatsApp / Teléfono -->
+                <table cellpadding="0" cellspacing="0" align="center" style="margin:26px auto 30px;">
+                    <tr>
+                    <td align="center" style="background-color:#f36b16; border-radius:999px;">
+                        <a href="https://wa.me/50235054714" 
+                        style="display:inline-block; padding:14px 26px; font-size:15px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:999px;">
+                        +502 3505-4714
+                        </a>
+                    </td>
+                    </tr>
+                </table>
+
+                <p style="margin:0 0 6px; font-size:16px; line-height:1.7; color:#5f5f5f;">
+                    ¡Te esperamos!
+                </p>
+
+                <p style="margin:0; font-size:16px; line-height:1.7; color:#4b4b4b; font-weight:bold;">
+                    Instituto CRUX
+                </p>
+
+                </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+                <td style="background-color:#6b6762; padding:24px 30px; text-align:center;">
+                <p style="margin:0 0 8px; font-size:13px; color:#ffffff; line-height:1.5;">
+                    Este correo fue enviado automáticamente como confirmación de tu inscripción.
+                </p>
+                <p style="margin:0; font-size:13px; color:#dedbd8; line-height:1.5;">
+                    © 2026 Instituto CRUX. Todos los derechos reservados.
+                </p>
+                </td>
+            </tr>
+
+            </table>
+
+        </td>
+        </tr>
+    </table>
+
+    </body>
+    </html>
+    """
+    html_body  = body_template.format(nombre_cliente=nombre_cliente)
 
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = smtp_from
     msg['To'] = destinatario
-    msg.set_content(body)
-
+    msg.set_content(
+    f"Hola {nombre_cliente}, adjunto encontrarás tu ticket para el Congreso Cristianamente.")
+    msg.add_alternative(html_body , subtype="html")
     filename = f'ticket_ICRUX.pdf'
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
     with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
@@ -347,7 +467,7 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     # with smtplib.SMTP(smtp_host, smtp_port) as server:
     #     server.ehlo()
     #     server.starttls()
-    #     server.ehlo()
+    #     server.ehlo() 
     #     server.login(smtp_user, smtp_password)
     #     server.send_message(msg)
 
