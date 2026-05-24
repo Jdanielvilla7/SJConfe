@@ -100,6 +100,44 @@ body.login-page {
   min-height: 100vh;
 }
 
+body.login-page .login-card {
+  background: #343a40;
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+body.login-page .login-card .card-body {
+  color: inherit;
+}
+
+body.login-page .login-card .form-control {
+  background-color: #ffffff;
+  color: #212529;
+}
+
+body.login-page .login-card .form-control::placeholder {
+  color: #6c757d;
+}
+
+body.login-page .login-card .btn-primary {
+  background-color: #495057;
+  border-color: #495057;
+}
+
+body.login-page .login-card .btn-primary:hover,
+body.login-page .login-card .btn-primary:focus {
+  background-color: #5c636a;
+  border-color: #5c636a;
+}
+
+body.login-page .login-logo {
+  display: block;
+  max-width: 220px;
+  width: 80%;
+  margin: 20px auto 0;
+}
+
 .sidebar a.active {
   background-color: #6b6b6b;
   font-weight: bold;
