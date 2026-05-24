@@ -563,18 +563,18 @@ def dashboard():
     porcentaje = round(((registrados ) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos_especiales.count_documents({})
 
-    cabana = request.args.get('cabana', 'todos')
-    lider = request.args.get('lider', 'todos')
+    pais = request.args.get('pais', 'todos')
+    iglesia = request.args.get('iglesia', 'todos')
 
     filtro = {}
-    if cabana != 'todos': 
-        filtro['cabana'] = cabana
-    if lider != 'todos':
-        filtro['lider'] = lider
+    if pais != 'todos':
+        filtro['pais'] = pais
+    if iglesia != 'todos':
+        filtro['iglesia'] = iglesia
 
     asistentes = list(mongo.db.asistentes.find(filtro, {'edad': 1}))
-    cabanas = sorted([item for item in mongo.db.asistentes.distinct('cabana') if item])
-    lideres = sorted([item for item in mongo.db.asistentes.distinct('lider') if item])
+    paises = sorted([item for item in mongo.db.asistentes.distinct('pais') if item])
+    iglesias = sorted([item for item in mongo.db.asistentes.distinct('iglesia') if item])
 
     def obtener_edad(asistente):
         try:
@@ -595,10 +595,10 @@ def dashboard():
     return render_template(
         'dashboard.html',
         datos_segmentos=datos_segmentos, 
-        filtro_cabana=cabana,
-        filtro_lider=lider,
-        cabanas=cabanas,
-        lideres=lideres,
+        filtro_pais=pais,
+        filtro_iglesia=iglesia,
+        paises=paises,
+        iglesias=iglesias,
         total=total,
         registrados=registrados,
         preregistro=0,
@@ -653,17 +653,19 @@ def cargar_asistentes():
 
                     asistente = {
                         "ticket_id": ticket_id,
-                        "cabana": valor_columna(fila, "Cabaña", "Cabana"),
                         "nombre": valor_columna(fila, "Nombre"),
-                        "lider": valor_columna(fila, "Lider", "Líder"),
-                        "correo": valor_columna(fila, "Correo"),
-                        "registro": valor_columna(fila, "Registro"),
-                        "edad": valor_columna(fila, "Edad"),
+                        "correo": valor_columna(fila, "Correo", "Email", "E-mail"),
                         "telefono": valor_columna(fila, "Telefono", "Teléfono"),
-                        "alergias": valor_columna(fila, "alergias", "Alergias"),
-                        "alimentos": valor_columna(fila, "alimentos", "Alimentos"),
-                        "medicamentos": valor_columna(fila, "medicamentos", "Medicamentos"),
-                        "nada": valor_columna(fila, "nada", "Nada")
+                        "edad": valor_columna(fila, "Edad"),
+                        "sexo": valor_columna(fila, "Sexo"),
+                        "estado_civil": valor_columna(
+                            fila,
+                            "Estado Civil",
+                            "EstadoCivil",
+                            "Estado_Civil"
+                        ),
+                        "pais": valor_columna(fila, "Pais", "País"),
+                        "iglesia": valor_columna(fila, "Iglesia")
                     }
 
                     mongo.db.asistentes.insert_one(asistente)
@@ -701,24 +703,16 @@ def registrar_asistentes_api():
     
     Esperado: JSON con estructura:
     {
-        "evento": {
-            "nombre": "string (requerido)",
-            "direccion": "string (requerido)",
-            "fecha_hora": "string (requerido)"
-        },
         "asistentes": [
             {
                 "nombre": "string (requerido)",
                 "correo": "string (requerido)",
-                "cabana": "string",
-                "lider": "string",
-                "registro": "string",
-                "edad": "string/int",
                 "telefono": "string",
-                "alergias": "string",
-                "alimentos": "string",
-                "medicamentos": "string",
-                "nada": "string"
+                "edad": "string/int",
+                "sexo": "string",
+                "estado_civil": "string",
+                "pais": "string",
+                "iglesia": "string"
             }
         ]
     }
@@ -754,13 +748,30 @@ def registrar_asistentes_api():
         insertados = 0
         errores = []
         asistentes_registrados = []
+
+        def limpiar_texto(valor):
+            if valor is None:
+                return ''
+            return str(valor).strip()
+
+        def limpiar_edad(valor):
+            if valor is None:
+                return ''
+            if isinstance(valor, str):
+                return valor.strip()
+            return valor
         
         for idx, asistente in enumerate(asistentes_data):
             try:
                 # Validar nombre (requerido)
-                nombre = asistente.get('nombre', '').strip()
-
-                correo = asistente.get('correo', '').strip()
+                nombre = limpiar_texto(asistente.get('nombre'))
+                correo = limpiar_texto(asistente.get('correo'))
+                telefono = limpiar_texto(asistente.get('telefono'))
+                sexo = limpiar_texto(asistente.get('sexo'))
+                estado_civil = limpiar_texto(asistente.get('estado_civil'))
+                pais = limpiar_texto(asistente.get('pais'))
+                iglesia = limpiar_texto(asistente.get('iglesia'))
+                edad = limpiar_edad(asistente.get('edad'))
                 
                 if not nombre:
                     errores.append(f"Registro {idx}: nombre es requerido")
@@ -787,16 +798,13 @@ def registrar_asistentes_api():
                 nuevo_asistente = {
                     'ticket_id': ticket_id,
                     'nombre': nombre,
-                    'cabana': asistente.get('cabana', '').strip(),
-                    'lider': asistente.get('lider', '').strip(),
                     'correo': correo,
-                    'registro': asistente.get('registro', '').strip(),
-                    'edad': asistente.get('edad', ''),
-                    'telefono': asistente.get('telefono', '').strip(),
-                    'alergias': asistente.get('alergias', '').strip(),
-                    'alimentos': asistente.get('alimentos', '').strip(),
-                    'medicamentos': asistente.get('medicamentos', '').strip(),
-                    'nada': asistente.get('nada', '').strip(),
+                    'telefono': telefono,
+                    'edad': edad,
+                    'sexo': sexo,
+                    'estado_civil': estado_civil,
+                    'pais': pais,
+                    'iglesia': iglesia,
                     'evento': {
                         'nombre': evento_nombre,
                         'direccion': evento_direccion,
@@ -937,9 +945,11 @@ def checkout():
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
-                    {'lider': {'$regex': query, '$options': 'i'}},
-                    {'cabana': {'$regex': query, '$options': 'i'}},
                     {'telefono': {'$regex': query, '$options': 'i'}},
+                    {'sexo': {'$regex': query, '$options': 'i'}},
+                    {'estado_civil': {'$regex': query, '$options': 'i'}},
+                    {'pais': {'$regex': query, '$options': 'i'}},
+                    {'iglesia': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
                 }))
@@ -964,9 +974,11 @@ def checkin_manual():
                 '$or': [
                     {'nombre': {'$regex': query, '$options': 'i'}},
                     {'correo': {'$regex': query, '$options': 'i'}},
-                    {'lider': {'$regex': query, '$options': 'i'}},
-                    {'cabana': {'$regex': query, '$options': 'i'}},
                     {'telefono': {'$regex': query, '$options': 'i'}},
+                    {'sexo': {'$regex': query, '$options': 'i'}},
+                    {'estado_civil': {'$regex': query, '$options': 'i'}},
+                    {'pais': {'$regex': query, '$options': 'i'}},
+                    {'iglesia': {'$regex': query, '$options': 'i'}},
                     {'ticket_id': query}
                 ]
             }))

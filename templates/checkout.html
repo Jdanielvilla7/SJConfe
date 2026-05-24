@@ -32,7 +32,7 @@
         <div class="card-body">
           <form method="POST" class="d-flex gap-2" action="{{ url_for('routes.checkout')}}">
             <input type="text" class="form-control" name="busqueda"
-              placeholder="Nombre, correo, líder, cabaña, teléfono o ticket ID" value="{{ query or '' }}" required>
+              placeholder="Nombre, correo, telefono, pais, iglesia o ticket ID" value="{{ query or '' }}" required>
             <button type="submit" class="btn btn-primary">Buscar</button>
           </form>
           {{ mensaje or ''}}
@@ -44,11 +44,12 @@
                 <tr>
                   <th>Nombre</th>
                   <th>Correo</th>
-                  <th>Cabaña</th>
-                  <th>Líder</th>
+                  <th>Telefono</th>
+                  <th>Pais</th>
+                  <th>Iglesia</th>
                   <th>Ticket ID</th>
                   <th>Estado</th>
-                  <th>Acción</th>
+                  <th>Accion</th>
                 </tr>
               </thead>
               <tbody>
@@ -56,8 +57,9 @@
                 <tr>
                   <td>{{ asistente.nombre }}</td>
                   <td>{{ asistente.correo }}</td>
-                  <td>{{ asistente.cabana or '—' }}</td>
-                  <td>{{ asistente.lider or '—' }}</td>
+                  <td>{{ asistente.telefono or '—' }}</td>
+                  <td>{{ asistente.pais or '—' }}</td>
+                  <td>{{ asistente.iglesia or '—' }}</td>
                   <td>{{ asistente.ticket_id }}</td>
                   <td class="text-center">{% if asistente.checked_in %}✅{% else %}❌{% endif %}</td>
                   <td>
@@ -96,14 +98,16 @@
 
         <div class="modal-body text-center">
           {% if asistente %}
-          {% set lider_valor = (asistente.lider or '')|string|trim|lower %}
-          {% set es_lider = lider_valor in ['si', 'sí', 's', 'true', '1', 'yes', 'y', 'x'] %}
           <p><strong>{{ mensaje }}</strong> </p>
           <hr>
           <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>
           <p><strong>Correo:</strong> {{ asistente.correo }}</p>
-          <p><strong>¿Es líder?:</strong> {% if es_lider %}Sí{% else %}No{% endif %}</p>
-          <p><strong>Cabaña:</strong> {{ asistente.cabana or '—' }}</p>
+          <p><strong>Telefono:</strong> {{ asistente.telefono or '—' }}</p>
+          <p><strong>Edad:</strong> {{ asistente.edad or '—' }}</p>
+          <p><strong>Sexo:</strong> {{ asistente.sexo or '—' }}</p>
+          <p><strong>Estado civil:</strong> {{ asistente.estado_civil or '—' }}</p>
+          <p><strong>Pais:</strong> {{ asistente.pais or '—' }}</p>
+          <p><strong>Iglesia:</strong> {{ asistente.iglesia or '—' }}</p>
           <p><strong>Ticket ID:</strong> {{ asistente.ticket_id }}</p>
           <hr>
 

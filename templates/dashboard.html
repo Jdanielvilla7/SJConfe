@@ -57,20 +57,20 @@
 
   <form method="GET" class="row g-2 mb-4">
     <div class="col-md-3">
-      <label class="form-label">Cabaña</label>
-      <select name="cabana" class="form-select">
-        <option value="todos" {% if filtro_cabana=='todos' %}selected{% endif %}>Todas</option>
-        {% for item in cabanas %}
-        <option value="{{ item }}" {% if filtro_cabana==item %}selected{% endif %}>{{ item }}</option>
+      <label class="form-label">Pais</label>
+      <select name="pais" class="form-select">
+        <option value="todos" {% if filtro_pais=='todos' %}selected{% endif %}>Todos</option>
+        {% for item in paises %}
+        <option value="{{ item }}" {% if filtro_pais==item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
       </select>
     </div>
     <div class="col-md-3">
-      <label class="form-label">Líder</label>
-      <select name="lider" class="form-select">
-        <option value="todos" {% if filtro_lider=='todos' %}selected{% endif %}>Todos</option>
-        {% for item in lideres %}
-        <option value="{{ item }}" {% if filtro_lider==item %}selected{% endif %}>{{ item }}</option>
+      <label class="form-label">Iglesia</label>
+      <select name="iglesia" class="form-select">
+        <option value="todos" {% if filtro_iglesia=='todos' %}selected{% endif %}>Todas</option>
+        {% for item in iglesias %}
+        <option value="{{ item }}" {% if filtro_iglesia==item %}selected{% endif %}>{{ item }}</option>
         {% endfor %}
       </select>
     </div>

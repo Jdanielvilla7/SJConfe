@@ -11,7 +11,7 @@
   <form method="POST" class="mb-4" action="{{ url_for('routes.checkin_manual')}}">
     <div class="input-group">
       <input type="text" name="busqueda" class="form-control"
-        placeholder="Buscar por nombre, correo, líder, cabaña, teléfono o ticket..." value="{{ query }}">
+        placeholder="Buscar por nombre, correo, telefono, pais, iglesia o ticket..." value="{{ query }}">
       <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button>
     </div>
   </form>
@@ -23,10 +23,12 @@
           <th>Ticket</th>
           <th>Nombre</th>
           <th>Correo</th>
-          <th>Teléfono</th>
-          <th>Cabaña</th>
-          <th>Líder</th>
-          <th>Registro</th>
+          <th>Telefono</th>
+          <th>Edad</th>
+          <th>Sexo</th>
+          <th>Estado civil</th>
+          <th>Pais</th>
+          <th>Iglesia</th>
           <th>Check-in</th>
         </tr>
       </thead>
@@ -37,9 +39,11 @@
           <td>{{ asistente.nombre }}</td>
           <td>{{ asistente.correo }}</td>
           <td>{{ asistente.telefono or '—' }}</td>
-          <td>{{ asistente.cabana or '—' }}</td>
-          <td>{{ asistente.lider or '—' }}</td>
-          <td>{{ asistente.registro or '—' }}</td>
+          <td>{{ asistente.edad or '—' }}</td>
+          <td>{{ asistente.sexo or '—' }}</td>
+          <td>{{ asistente.estado_civil or '—' }}</td>
+          <td>{{ asistente.pais or '—' }}</td>
+          <td>{{ asistente.iglesia or '—' }}</td>
           <td>
             {% if asistente.checked_in %}
             <span class="text-success"><i class="fas fa-check-circle"></i> Sí</span>
@@ -50,7 +54,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" class="text-center text-muted">No se encontraron asistentes.</td>
+          <td colspan="10" class="text-center text-muted">No se encontraron asistentes.</td>
         </tr>
         {% endfor %}
       </tbody>

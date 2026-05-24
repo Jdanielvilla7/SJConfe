@@ -9,7 +9,7 @@
   <h2>Buscar Asistente</h2>
 
   <form method="POST">
-    <input type="text" name="busqueda" placeholder="Nombre, correo, líder, cabaña, teléfono o ticket ID"
+    <input type="text" name="busqueda" placeholder="Nombre, correo, telefono, pais, iglesia o ticket ID"
       value="{{ query or '' }}" required>
     <button type="submit">Buscar</button>
   </form>
@@ -20,8 +20,9 @@
     <tr>
       <th>Nombre</th>
       <th>Correo</th>
-      <th>Cabaña</th>
-      <th>Líder</th>
+      <th>Telefono</th>
+      <th>Pais</th>
+      <th>Iglesia</th>
       <th>Ticket ID</th>
       <th>Estado</th>
       <th>Acción</th>
@@ -30,8 +31,9 @@
     <tr>
       <td>{{ asistente.nombre }}</td>
       <td>{{ asistente.correo }}</td>
-      <td>{{ asistente.cabana or '—' }}</td>
-      <td>{{ asistente.lider or '—' }}</td>
+      <td>{{ asistente.telefono or '—' }}</td>
+      <td>{{ asistente.pais or '—' }}</td>
+      <td>{{ asistente.iglesia or '—' }}</td>
       <td>{{ asistente.ticket_id }}</td>
       <td>
         {% if asistente.checked_in %}
