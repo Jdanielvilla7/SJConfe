@@ -740,9 +740,9 @@ def registrar_asistentes_api():
             return jsonify({'error': 'El campo "asistentes" debe ser una lista'}), 400
         
         
-        evento_nombre = 'Congreso Cristiana Mente'
+        evento_nombre = 'Congreso Cristianamente'
         evento_direccion = 'Centro de Convenciones Ilumina z10'
-        evento_fecha_hora = '2026-08-01'        
+        evento_fecha_hora = '01 de agosto de 2026, 8:00 AM'        
         evento_pais =   'Guatemala'
         evento_footer = 'Instituto CRUX'
 
