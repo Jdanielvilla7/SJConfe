@@ -609,6 +609,171 @@ def dashboard():
     )
 
 
+@routes.route('/agricultura/catalogo', methods=['GET', 'POST'])
+@acceso_requerido
+@rol_requerido('admin')
+def agricultura_catalogo():
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        ahora = datetime.now(pytz.timezone('America/Guatemala'))
+
+        if tipo == 'insumo':
+            nombre = request.form.get('nombre', '').strip()
+            unidad = request.form.get('unidad', '').strip()
+            descripcion = request.form.get('descripcion', '').strip()
+
+            if not nombre or not unidad:
+                flash('Nombre y unidad son requeridos para el insumo.', 'warning')
+            else:
+                mongo.db.insumos_agricolas.insert_one({
+                    'nombre': nombre,
+                    'unidad': unidad,
+                    'descripcion': descripcion,
+                    'activo': True,
+                    'creado_en': ahora,
+                    'creado_por': session.get('username', 'desconocido')
+                })
+                flash('Insumo agregado correctamente.', 'success')
+
+            return redirect(url_for('routes.agricultura_catalogo'))
+
+        if tipo == 'maquinaria':
+            nombre = request.form.get('nombre', '').strip()
+            descripcion = request.form.get('descripcion', '').strip()
+
+            if not nombre:
+                flash('Nombre es requerido para la maquinaria.', 'warning')
+            else:
+                mongo.db.maquinaria_agricola.insert_one({
+                    'nombre': nombre,
+                    'descripcion': descripcion,
+                    'disponible': True,
+                    'creado_en': ahora,
+                    'creado_por': session.get('username', 'desconocido')
+                })
+                flash('Maquinaria agregada correctamente.', 'success')
+
+            return redirect(url_for('routes.agricultura_catalogo'))
+
+        flash('Tipo de registro invalido.', 'danger')
+        return redirect(url_for('routes.agricultura_catalogo'))
+
+    insumos = list(mongo.db.insumos_agricolas.find().sort('nombre', 1))
+    maquinaria = list(mongo.db.maquinaria_agricola.find().sort('nombre', 1))
+
+    return render_template(
+        'agricultura_catalogo.html',
+        insumos=insumos,
+        maquinaria=maquinaria
+    )
+
+
+@routes.route('/agricultura/solicitudes', methods=['GET', 'POST'])
+@acceso_requerido
+def agricultura_solicitudes():
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        item_id = request.form.get('item_id', '').strip()
+        nota = request.form.get('nota', '').strip()
+        cantidad_raw = request.form.get('cantidad', '').strip()
+
+        if tipo not in ['insumo', 'maquinaria']:
+            flash('Tipo de solicitud invalido.', 'danger')
+            return redirect(url_for('routes.agricultura_solicitudes'))
+
+        if not item_id:
+            flash('Selecciona un item para solicitar.', 'warning')
+            return redirect(url_for('routes.agricultura_solicitudes'))
+
+        try:
+            item_object_id = ObjectId(item_id)
+        except Exception:
+            flash('Item invalido.', 'warning')
+            return redirect(url_for('routes.agricultura_solicitudes'))
+
+        if tipo == 'insumo':
+            collection = mongo.db.insumos_agricolas
+            if not cantidad_raw:
+                flash('Cantidad es requerida para el insumo.', 'warning')
+                return redirect(url_for('routes.agricultura_solicitudes'))
+            try:
+                cantidad_valor = float(cantidad_raw.replace(',', '.'))
+            except ValueError:
+                flash('Cantidad invalida para el insumo.', 'warning')
+                return redirect(url_for('routes.agricultura_solicitudes'))
+
+            if cantidad_valor <= 0:
+                flash('La cantidad debe ser mayor a 0.', 'warning')
+                return redirect(url_for('routes.agricultura_solicitudes'))
+        else:
+            collection = mongo.db.maquinaria_agricola
+            cantidad_raw = cantidad_raw or '1'
+            try:
+                cantidad_valor = int(cantidad_raw)
+            except ValueError:
+                flash('Cantidad invalida para la maquinaria.', 'warning')
+                return redirect(url_for('routes.agricultura_solicitudes'))
+
+            if cantidad_valor <= 0:
+                flash('La cantidad debe ser mayor a 0.', 'warning')
+                return redirect(url_for('routes.agricultura_solicitudes'))
+
+        item = collection.find_one({'_id': item_object_id})
+        if not item:
+            flash('No se encontro el item seleccionado.', 'warning')
+            return redirect(url_for('routes.agricultura_solicitudes'))
+
+        try:
+            solicitante_id = ObjectId(session.get('user_id'))
+        except Exception:
+            solicitante_id = session.get('user_id')
+
+        solicitud = {
+            'tipo': tipo,
+            'item_id': item.get('_id'),
+            'item_nombre': item.get('nombre', ''),
+            'cantidad': cantidad_valor,
+            'unidad': item.get('unidad') if tipo == 'insumo' else None,
+            'nota': nota,
+            'estado': 'pendiente',
+            'solicitado_en': datetime.now(pytz.timezone('America/Guatemala')),
+            'solicitante_id': solicitante_id,
+            'solicitante_username': session.get('username', ''),
+            'solicitante_nombre': session.get('nombre', '')
+        }
+
+        mongo.db.solicitudes_agricolas.insert_one(solicitud)
+        flash('Solicitud registrada correctamente.', 'success')
+        return redirect(url_for('routes.agricultura_solicitudes'))
+
+    insumos = list(mongo.db.insumos_agricolas.find().sort('nombre', 1))
+    maquinaria = list(mongo.db.maquinaria_agricola.find().sort('nombre', 1))
+
+    es_admin = session.get('rol') == 'admin'
+    filtro = {}
+    if not es_admin:
+        try:
+            filtro['solicitante_id'] = ObjectId(session.get('user_id'))
+        except Exception:
+            filtro['solicitante_id'] = session.get('user_id')
+
+    solicitudes = list(mongo.db.solicitudes_agricolas.find(filtro).sort('solicitado_en', -1))
+
+    return render_template(
+        'agricultura_solicitudes.html',
+        insumos=insumos,
+        maquinaria=maquinaria,
+        solicitudes=solicitudes,
+        es_admin=es_admin
+    )
+
+
 
 # RUTA: Logout
 @routes.route('/logout')

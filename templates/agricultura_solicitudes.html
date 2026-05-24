@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}Solicitudes agricolas{% endblock %}
+
+{% block h1 %}Solicitudes agricolas <i class="fas fa-seedling"></i>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="fas fa-seedling me-2"></i>Solicitar insumos</h5>
+        </div>
+        <div class="card-body">
+          {% if insumos %}
+          <form method="POST" class="row g-3">
+            <input type="hidden" name="tipo" value="insumo">
+            <div class="col-md-7">
+              <label class="form-label">Insumo *</label>
+              <select name="item_id" class="form-select" required>
+                <option value="" disabled selected>Selecciona un insumo</option>
+                {% for insumo in insumos %}
+                <option value="{{ insumo._id }}">{{ insumo.nombre }} ({{ insumo.unidad }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Cantidad *</label>
+              <input type="number" class="form-control" name="cantidad" step="0.01" min="0.01" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Detalle</label>
+              <textarea class="form-control" name="nota" rows="2"></textarea>
+            </div>
+            <div class="col-12 text-end">
+              <button type="submit" class="btn btn-success">Solicitar insumo</button>
+            </div>
+          </form>
+          {% else %}
+          <p class="text-muted mb-0">Aun no hay insumos disponibles.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-tractor me-2"></i>Solicitar maquinaria</h5>
+        </div>
+        <div class="card-body">
+          {% if maquinaria %}
+          <form method="POST" class="row g-3">
+            <input type="hidden" name="tipo" value="maquinaria">
+            <div class="col-md-7">
+              <label class="form-label">Maquinaria *</label>
+              <select name="item_id" class="form-select" required>
+                <option value="" disabled selected>Selecciona una maquinaria</option>
+                {% for item in maquinaria %}
+                <option value="{{ item._id }}">{{ item.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">Cantidad *</label>
+              <input type="number" class="form-control" name="cantidad" min="1" step="1" value="1" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Detalle</label>
+              <textarea class="form-control" name="nota" rows="2"></textarea>
+            </div>
+            <div class="col-12 text-end">
+              <button type="submit" class="btn btn-primary">Solicitar maquinaria</button>
+            </div>
+          </form>
+          {% else %}
+          <p class="text-muted mb-0">Aun no hay maquinaria disponible.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">Solicitudes registradas</div>
+        <div class="card-body table-responsive">
+          {% if solicitudes %}
+          <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Item</th>
+                <th>Cantidad</th>
+                <th>Detalle</th>
+                <th>Estado</th>
+                {% if es_admin %}
+                <th>Solicitante</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for solicitud in solicitudes %}
+              <tr>
+                <td>{{ solicitud.solicitado_en.strftime('%d/%m/%Y %H:%M') if solicitud.solicitado_en else 'N/A' }}</td>
+                <td>{{ solicitud.tipo }}</td>
+                <td>{{ solicitud.item_nombre }}</td>
+                <td>
+                  {{ solicitud.cantidad }}{% if solicitud.unidad %} {{ solicitud.unidad }}{% endif %}
+                </td>
+                <td>{{ solicitud.nota or 'N/A' }}</td>
+                <td>{{ solicitud.estado }}</td>
+                {% if es_admin %}
+                <td>{{ solicitud.solicitante_nombre or solicitud.solicitante_username or 'N/A' }}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-muted mb-0">No hay solicitudes registradas.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

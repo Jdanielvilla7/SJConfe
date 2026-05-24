@@ -41,6 +41,10 @@
     <a href="{{ url_for('routes.checkout') }}" class="{% if request.endpoint == 'routes.checkout' %}active{% endif %}">
       <i class="fas fa-ticket me-2"></i>Check-in
     </a>
+    <a href="{{ url_for('routes.agricultura_solicitudes') }}"
+      class="{% if request.endpoint == 'routes.agricultura_solicitudes' %}active{% endif %}">
+      <i class="fas fa-seedling me-2"></i>Solicitudes agricolas
+    </a>
 
     {% if session.get('rol') in ['admin', 'coord'] %}
     <a href="{{ url_for('routes.casos_especiales') }}"
@@ -58,6 +62,10 @@
     <a href="{{ url_for('routes.ver_asistentes') }}"
       class="{% if request.endpoint == 'routes.ver_asistentes' %}active{% endif %}">
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
+    </a>
+    <a href="{{ url_for('routes.agricultura_catalogo') }}"
+      class="{% if request.endpoint == 'routes.agricultura_catalogo' %}active{% endif %}">
+      <i class="fas fa-tractor me-2"></i>Catalogo agricola
     </a>
     {% endif %}
     {% if session.get('autoriza')==1 %}
