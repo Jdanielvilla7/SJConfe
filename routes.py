@@ -314,8 +314,8 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     # smtp_from = os.getenv('SMTP_FROM', smtp_user)
     smtp_host = 'smtp.gmail.com'
     smtp_port = 587
-    smtp_user = 'atejada@institutocrux.org'
-    smtp_password = 'njdmtisaqhukjamx'
+    smtp_user = 'cursos@institutocrux.org'
+    smtp_password = 'uczzqkwsthzwvhhd'
     smtp_from = 'cursos@institutocrux.org'
 
     if not smtp_user or not smtp_password:
@@ -445,15 +445,15 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     </body>
     </html>
     """
-    html_body  = body_template.format(nombre_cliente=nombre_cliente)
-
+    
+    print(body_template)
     msg = EmailMessage()
     msg['Subject'] = subject
     msg['From'] = smtp_from
     msg['To'] = destinatario
     msg.set_content(
     f"Hola {nombre_cliente}, adjunto encontrarás tu ticket para el Congreso Cristianamente.")
-    msg.add_alternative(html_body , subtype="html")
+    msg.add_alternative(body_template , subtype="html")
     filename = f'ticket_ICRUX.pdf'
     msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
     with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
