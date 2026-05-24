@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+
+{% block title %}Autorizaciones{% endblock %}
+
+{% block h1 %}Autorizaciones <i class="fas fa-clipboard-check"></i>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark text-white">Solicitudes para autorizar</div>
+    <div class="card-body table-responsive">
+      {% if solicitudes %}
+      <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Item</th>
+            <th>Cantidad</th>
+            <th>Detalle</th>
+            <th>Solicitante</th>
+            <th>Estado</th>
+            <th>Autorizado por</th>
+            <th>Autorizado en</th>
+            <th>Accion</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for solicitud in solicitudes %}
+          <tr>
+            <td>{{ solicitud.solicitado_en.strftime('%d/%m/%Y %H:%M') if solicitud.solicitado_en else 'N/A' }}</td>
+            <td>{{ solicitud.tipo }}</td>
+            <td>{{ solicitud.item_nombre }}</td>
+            <td>
+              {{ solicitud.cantidad }}{% if solicitud.unidad %} {{ solicitud.unidad }}{% endif %}
+            </td>
+            <td>{{ solicitud.nota or 'N/A' }}</td>
+            <td>{{ solicitud.solicitante_nombre or solicitud.solicitante_username or 'N/A' }}</td>
+            <td>
+              {% if solicitud.estado == 'pendiente' %}
+              ⏳ Pendiente
+              {% elif solicitud.estado == 'aprobada' %}
+              ✅ Aprobada
+              {% elif solicitud.estado == 'rechazada' %}
+              ❌ Rechazada
+              {% else %}
+              {{ solicitud.estado }}
+              {% endif %}
+            </td>
+            <td>{{ solicitud.autorizado_nombre or solicitud.autorizado_por or 'N/A' }}</td>
+            <td>{{ solicitud.autorizado_en.strftime('%d/%m/%Y %H:%M') if solicitud.autorizado_en else 'N/A' }}</td>
+            <td>
+              {% if solicitud.estado == 'pendiente' %}
+              <form method="POST" class="d-flex gap-2">
+                <input type="hidden" name="solicitud_id" value="{{ solicitud._id }}">
+                <button type="submit" class="btn btn-sm btn-success" name="accion" value="aprobada">Aprobar</button>
+                <button type="submit" class="btn btn-sm btn-danger" name="accion" value="rechazada">Rechazar</button>
+              </form>
+              {% else %}
+              <span class="text-muted small">Procesada</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">No hay solicitudes registradas.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

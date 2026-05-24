@@ -112,7 +112,17 @@
                   {{ solicitud.cantidad }}{% if solicitud.unidad %} {{ solicitud.unidad }}{% endif %}
                 </td>
                 <td>{{ solicitud.nota or 'N/A' }}</td>
-                <td>{{ solicitud.estado }}</td>
+                <td>
+                  {% if solicitud.estado == 'pendiente' %}
+                  ⏳ Pendiente
+                  {% elif solicitud.estado == 'aprobada' %}
+                  ✅ Aprobada
+                  {% elif solicitud.estado == 'rechazada' %}
+                  ❌ Rechazada
+                  {% else %}
+                  {{ solicitud.estado }}
+                  {% endif %}
+                </td>
                 {% if es_admin %}
                 <td>{{ solicitud.solicitante_nombre or solicitud.solicitante_username or 'N/A' }}</td>
                 {% endif %}

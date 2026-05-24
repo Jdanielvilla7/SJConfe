@@ -556,56 +556,50 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
 
-    total = mongo.db.asistentes.count_documents({})
-    registrados = mongo.db.asistentes.count_documents({'checked_in': True})
-    pendientes = total - registrados 
-    pendientes_sin_pre = pendientes
-    porcentaje = round(((registrados ) / total * 100), 2) if total else 0
-    casos_especiales = mongo.db.casos_especiales.count_documents({})
-
-    pais = request.args.get('pais', 'todos')
-    iglesia = request.args.get('iglesia', 'todos')
-
-    filtro = {}
-    if pais != 'todos':
-        filtro['pais'] = pais
-    if iglesia != 'todos':
-        filtro['iglesia'] = iglesia
-
-    asistentes = list(mongo.db.asistentes.find(filtro, {'edad': 1}))
-    paises = sorted([item for item in mongo.db.asistentes.distinct('pais') if item])
-    iglesias = sorted([item for item in mongo.db.asistentes.distinct('iglesia') if item])
-
-    def obtener_edad(asistente):
+    es_admin = session.get('rol') == 'admin'
+    filtro_base = {}
+    if not es_admin:
         try:
-            return int(asistente.get('edad', 0))
-        except (ValueError, TypeError):
-            return 0
-    segmento_12_14 = sum(1 for a in asistentes if obtener_edad(a) <= 14)
-    segmento_15_17 = sum(1 for a in asistentes if 15 <= obtener_edad(a) <= 17)
-    segmento_18_24 = sum(1 for a in asistentes if 18 <= obtener_edad(a) <= 24)
-    segmento_25_mas = sum(1 for a in asistentes if obtener_edad(a) >= 25)
+            filtro_base['solicitante_id'] = ObjectId(session.get('user_id'))
+        except Exception:
+            filtro_base['solicitante_id'] = session.get('user_id')
 
-    datos_segmentos = {
-        "labels": ["12-14","15-17 años", "18-24 años", "25-30+ años"],
-        "valores": [segmento_12_14,segmento_15_17, segmento_18_24, segmento_25_mas]
-    }
+    total_solicitudes = mongo.db.solicitudes_agricolas.count_documents(filtro_base)
 
+    filtro_pendientes = dict(filtro_base)
+    filtro_pendientes['estado'] = 'pendiente'
+    pendientes = mongo.db.solicitudes_agricolas.count_documents(filtro_pendientes)
+
+    filtro_aprobadas = dict(filtro_base)
+    filtro_aprobadas['estado'] = 'aprobada'
+    aprobadas = mongo.db.solicitudes_agricolas.count_documents(filtro_aprobadas)
+
+    filtro_rechazadas = dict(filtro_base)
+    filtro_rechazadas['estado'] = 'rechazada'
+    rechazadas = mongo.db.solicitudes_agricolas.count_documents(filtro_rechazadas)
+
+    filtro_insumos = dict(filtro_base)
+    filtro_insumos['tipo'] = 'insumo'
+    total_insumos = mongo.db.solicitudes_agricolas.count_documents(filtro_insumos)
+
+    filtro_maquinaria = dict(filtro_base)
+    filtro_maquinaria['tipo'] = 'maquinaria'
+    total_maquinaria = mongo.db.solicitudes_agricolas.count_documents(filtro_maquinaria)
+
+    solicitudes_recientes = list(
+        mongo.db.solicitudes_agricolas.find(filtro_base).sort('solicitado_en', -1).limit(10)
+    )
 
     return render_template(
         'dashboard.html',
-        datos_segmentos=datos_segmentos, 
-        filtro_pais=pais,
-        filtro_iglesia=iglesia,
-        paises=paises,
-        iglesias=iglesias,
-        total=total,
-        registrados=registrados,
-        preregistro=0,
+        total_solicitudes=total_solicitudes,
         pendientes=pendientes,
-        porcentaje=porcentaje,
-        casos_especiales=casos_especiales,
-        pendientes_sin_pre = pendientes_sin_pre
+        aprobadas=aprobadas,
+        rechazadas=rechazadas,
+        total_insumos=total_insumos,
+        total_maquinaria=total_maquinaria,
+        solicitudes_recientes=solicitudes_recientes,
+        es_admin=es_admin
     )
 
 
@@ -771,6 +765,58 @@ def agricultura_solicitudes():
         maquinaria=maquinaria,
         solicitudes=solicitudes,
         es_admin=es_admin
+    )
+
+
+@routes.route('/agricultura/autorizaciones', methods=['GET', 'POST'])
+@acceso_requerido
+@rol_requerido('admin')
+def agricultura_autorizaciones():
+    if 'user_id' not in session:
+        return redirect(url_for('routes.login'))
+
+    if request.method == 'POST':
+        solicitud_id = request.form.get('solicitud_id', '').strip()
+        accion = request.form.get('accion', '').strip()
+
+        if accion not in ['aprobada', 'rechazada']:
+            flash('Accion invalida para la solicitud.', 'warning')
+            return redirect(url_for('routes.agricultura_autorizaciones'))
+
+        if not solicitud_id:
+            flash('Solicitud no valida.', 'warning')
+            return redirect(url_for('routes.agricultura_autorizaciones'))
+
+        try:
+            solicitud_object_id = ObjectId(solicitud_id)
+        except Exception:
+            flash('Solicitud no valida.', 'warning')
+            return redirect(url_for('routes.agricultura_autorizaciones'))
+
+        update_payload = {
+            'estado': accion,
+            'autorizado_por': session.get('username', ''),
+            'autorizado_nombre': session.get('nombre', ''),
+            'autorizado_en': datetime.now(pytz.timezone('America/Guatemala'))
+        }
+
+        result = mongo.db.solicitudes_agricolas.update_one(
+            {'_id': solicitud_object_id},
+            {'$set': update_payload}
+        )
+
+        if result.matched_count == 0:
+            flash('No se encontro la solicitud seleccionada.', 'warning')
+        else:
+            flash(f'Solicitud {accion} correctamente.', 'success')
+
+        return redirect(url_for('routes.agricultura_autorizaciones'))
+
+    solicitudes = list(mongo.db.solicitudes_agricolas.find().sort('solicitado_en', -1))
+
+    return render_template(
+        'agricultura_autorizaciones.html',
+        solicitudes=solicitudes
     )
 
 
