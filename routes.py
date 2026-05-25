@@ -20,6 +20,7 @@ from io import BytesIO
 from flask import abort
 import logging
 from email.message import EmailMessage
+from email.utils import formataddr
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.graphics.barcode import code128
@@ -312,6 +313,8 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     # smtp_user = os.getenv('SMTP_USER','cursos@institutocrux.org')
     # smtp_password = os.getenv('SMTP_PASSWORD','njdm tisa qhuk jamx')
     # smtp_from = os.getenv('SMTP_FROM', smtp_user)
+    sender_name = 'Cursos | Instituto'
+
     smtp_host = 'smtp.gmail.com'
     smtp_port = 587
     smtp_user = 'cursos@institutocrux.org'
@@ -321,7 +324,7 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     if not smtp_user or not smtp_password:
         raise ValueError('SMTP_USER y SMTP_PASSWORD son requeridos')
 
-    subject = os.getenv('TICKET_EMAIL_SUBJECT', 'Tu ticket para el evento')
+    subject = os.getenv('TICKET_EMAIL_SUBJECT', ' 🟩 Tu ticket para el evento')
     body_template = f"""
     <!DOCTYPE html>
     <html lang="es">
@@ -449,7 +452,7 @@ def enviar_ticket_email(destinatario, nombre_cliente, pdf_bytes, ticket_id):
     print(body_template)
     msg = EmailMessage()
     msg['Subject'] = subject
-    msg['From'] = smtp_from
+    msg['From'] = formataddr((sender_name, smtp_from))
     msg['To'] = destinatario
     msg.set_content(
     f"Hola {nombre_cliente}, adjunto encontrarás tu ticket para el Congreso Cristianamente.")
