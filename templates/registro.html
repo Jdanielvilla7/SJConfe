@@ -1,32 +1,111 @@
 {% extends "layout.html" %}
 
-{% block title %}Registro de Usuario{% endblock %}
-{% block h1 %}Registro de Usuario {% endblock %}
+{% block title %}Administración de usuarios{% endblock %}
+{% block h1 %}Administración de usuarios <i class="fas fa-users-gear ms-2"></i>{% endblock %}
 
 {% block content %}
-<div class="container mt-5" style="max-width: 500px;">
-  <form method="POST" class="card p-4 shadow-sm border-0 bg-light">
-      <div class="mb-3">
-      <label for="name" class="form-label">Nombre</label>
-      <input type="text" name="name" class="form-control" placeholder="Nombre" required>
+<div class="container-fluid px-0">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-1">{{ 'Editar usuario' if usuario_editar else 'Nuevo usuario' }}</h5>
+          <p class="text-muted small mb-0">
+            {{ 'Deja la contraseña vacía para conservar la actual.' if usuario_editar else 'Crea credenciales para un nuevo miembro del equipo.' }}
+          </p>
+        </div>
+        <div class="card-body">
+          <form method="POST" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="accion" value="{{ 'editar' if usuario_editar else 'crear' }}">
+            {% if usuario_editar %}
+            <input type="hidden" name="usuario_id" value="{{ usuario_editar._id }}">
+            {% endif %}
+
+            <div class="mb-3">
+              <label for="name" class="form-label">Nombre completo</label>
+              <input id="name" type="text" name="name" class="form-control" value="{{ usuario_editar.nombre if usuario_editar else '' }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="username" class="form-label">Usuario</label>
+              <input id="username" type="text" name="username" class="form-control" value="{{ usuario_editar.username if usuario_editar else '' }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="password" class="form-label">Contraseña {{ '(opcional)' if usuario_editar else '' }}</label>
+              <input id="password" type="password" name="password" class="form-control" minlength="8" {{ '' if usuario_editar else 'required' }} autocomplete="new-password">
+              <div class="form-text">Mínimo 8 caracteres.</div>
+            </div>
+            <div class="mb-3">
+              <label for="rol" class="form-label">Rol</label>
+              {% set rol_actual = usuario_editar.get('rol', 'staff') if usuario_editar else 'staff' %}
+              <select id="rol" name="rol" class="form-select" required>
+                <option value="staff" {{ 'selected' if rol_actual == 'staff' else '' }}>Staff</option>
+                <option value="coord" {{ 'selected' if rol_actual == 'coord' else '' }}>Coordinador</option>
+                <option value="admin" {{ 'selected' if rol_actual == 'admin' else '' }}>Administrador</option>
+              </select>
+            </div>
+            <div class="row g-3 mb-4">
+              <div class="col-6">
+                <label for="acceso" class="form-label">Acceso</label>
+                <select id="acceso" name="acceso" class="form-select">
+                  <option value="1" {{ 'selected' if not usuario_editar or usuario_editar.get('acceso', 0) == 1 else '' }}>Sí</option>
+                  <option value="0" {{ 'selected' if usuario_editar and usuario_editar.get('acceso', 0) != 1 else '' }}>No</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label for="autoriza" class="form-label">Autoriza</label>
+                <select id="autoriza" name="autoriza" class="form-select">
+                  <option value="0" {{ 'selected' if not usuario_editar or usuario_editar.get('autoriza', 0) != 1 else '' }}>No</option>
+                  <option value="1" {{ 'selected' if usuario_editar and usuario_editar.get('autoriza', 0) == 1 else '' }}>Sí</option>
+                </select>
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary flex-grow-1">
+                <i class="fas fa-{{ 'floppy-disk' if usuario_editar else 'user-plus' }} me-2"></i>
+                {{ 'Guardar cambios' if usuario_editar else 'Crear usuario' }}
+              </button>
+              {% if usuario_editar %}
+              <a href="{{ url_for('routes.registro') }}" class="btn btn-light">Cancelar</a>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      <label for="username" class="form-label">Usuario</label>
-      <input type="text" name="username" class="form-control" placeholder="Usuario" required>
+
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-1">Usuarios existentes</h5>
+            <p class="text-muted small mb-0">{{ usuarios|length }} usuario{{ '' if usuarios|length == 1 else 's' }} registrado{{ '' if usuarios|length == 1 else 's' }}</p>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr><th>Usuario</th><th>Rol</th><th>Acceso</th><th>Autoriza</th><th class="text-end">Acción</th></tr>
+              </thead>
+              <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                  <td><strong>{{ usuario.nombre }}</strong><small class="d-block text-muted">@{{ usuario.username }}</small></td>
+                  <td><span class="badge text-bg-light text-capitalize">{{ usuario.get('rol', 'staff') }}</span></td>
+                  <td><span class="badge {{ 'text-bg-success' if usuario.get('acceso', 0) == 1 else 'text-bg-secondary' }}">{{ 'Sí' if usuario.get('acceso', 0) == 1 else 'No' }}</span></td>
+                  <td><span class="badge {{ 'text-bg-primary' if usuario.get('autoriza', 0) == 1 else 'text-bg-light' }}">{{ 'Sí' if usuario.get('autoriza', 0) == 1 else 'No' }}</span></td>
+                  <td class="text-end"><a href="{{ url_for('routes.registro', editar=usuario._id) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-pen me-1"></i>Editar</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="py-4 text-center text-muted">No hay usuarios registrados.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      <label for="password" class="form-label">Contraseña</label>
-      <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
-    </div>
-    <div class="mb-3">
-      <label for="rol" class="form-label">Rol</label>
-      <select name="rol" class="form-select">
-        <option value="staff">Staff</option>
-        <option value="coord">Coordinator</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
-    <button type="submit" class="btn btn-primary w-100">Registrar Usuario</button>
-  </form>
+  </div>
 </div>
 {% endblock %}

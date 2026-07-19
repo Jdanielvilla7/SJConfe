@@ -17,6 +17,8 @@ from extensions import mongo, app
 from functools import wraps
 from flask import abort
 import logging
+import hmac
+import secrets
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,8 +63,19 @@ def rol_requerido(rol_permitido):
     def decorador(f):
         @wraps(f)
         def decorador_funcion(*args, **kwargs):
-            if 'rol' not in session or session['rol'] != rol_permitido:
-                abort(403)  # Prohibido
+            usuario_id = session.get('user_id')
+            if not usuario_id:
+                return redirect(url_for('routes.login'))
+            try:
+                usuario = mongo.db.usuarios.find_one(
+                    {'_id': ObjectId(usuario_id)},
+                    {'rol': 1}
+                )
+            except Exception:
+                session.clear()
+                return redirect(url_for('routes.login'))
+            if not usuario or usuario.get('rol') != rol_permitido:
+                abort(403)
             return f(*args, **kwargs)
         return decorador_funcion
     return decorador
@@ -70,9 +83,20 @@ def rol_requerido(rol_permitido):
 def acceso_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
-        if session.get('acceso') != 1:
+        usuario_id = session.get('user_id')
+        if not usuario_id:
+            return redirect(url_for('routes.login'))
+        try:
+            usuario = mongo.db.usuarios.find_one(
+                {'_id': ObjectId(usuario_id)},
+                {'acceso': 1}
+            )
+        except Exception:
+            session.clear()
+            return redirect(url_for('routes.login'))
+        if not usuario or usuario.get('acceso', 0) != 1:
             flash('Acceso deshabilitado. Contacta al administrador.', 'danger')
-            return redirect(url_for('routes.login'))  # o a donde prefieras
+            return redirect(url_for('routes.login'))
         return f(*args, **kwargs)
     return decorada
 
@@ -82,7 +106,7 @@ class Usuario:
         self.id = str(user_data['_id'])
         self.username = user_data['username']
         self.nombre = user_data['nombre']
-        self.autoriza = user_data['autoriza']
+        self.autoriza = user_data.get('autoriza', 0)
         self.password_hash = user_data['password']
         self.rol = user_data.get('rol', 'staff')  # Por defecto, 'staff'
         self.acceso =  user_data.get('acceso', 0)
@@ -107,22 +131,118 @@ def load_user(user_id):
 def index():
     return redirect(url_for('routes.login'))
 
-# RUTA: Registro
+# RUTA: Administración de usuarios
 @routes.route('/registro', methods=['GET', 'POST'])
-@acceso_requerido
 @rol_requerido('admin')
+@acceso_requerido
 def registro():
+    roles_permitidos = {'admin', 'coord', 'staff'}
+
+    if 'csrf_token' not in session:
+        session['csrf_token'] = secrets.token_hex(32)
+
     if request.method == 'POST':
-        nombre=request.form['name']
-        username = request.form['username']
-        password = generate_password_hash(request.form['password'])
-        rol = request.form.get('rol', 'staff')  
-        autoriza = 0
-        token_fcm = ''
-        mongo.db.usuarios.insert_one({'username': username,'nombre':nombre, 'password': password, 'rol': rol,'token_fcm':token_fcm,'autoriza':autoriza})
-        flash('Usuario creado correctamente.')
-        return redirect(url_for('routes.login'))
-    return render_template('registro.html')
+        token_recibido = request.form.get('csrf_token', '')
+        if not hmac.compare_digest(token_recibido, session.get('csrf_token', '')):
+            abort(400)
+
+        accion = request.form.get('accion', 'crear')
+        nombre = request.form.get('name', '').strip()
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        rol = request.form.get('rol', 'staff')
+        acceso = 1 if request.form.get('acceso') == '1' else 0
+        autoriza = 1 if request.form.get('autoriza') == '1' else 0
+
+        if not nombre or not username or rol not in roles_permitidos:
+            flash('Completa los campos obligatorios con valores válidos.', 'danger')
+            return redirect(url_for('routes.registro'))
+
+        if password and len(password) < 8:
+            flash('La contraseña debe tener al menos 8 caracteres.', 'danger')
+            return redirect(url_for('routes.registro'))
+
+        if accion == 'crear':
+            if not password:
+                flash('La contraseña es obligatoria para crear un usuario.', 'danger')
+                return redirect(url_for('routes.registro'))
+            if mongo.db.usuarios.find_one({'username': username}):
+                flash('Ese nombre de usuario ya existe.', 'warning')
+                return redirect(url_for('routes.registro'))
+
+            mongo.db.usuarios.insert_one({
+                'username': username,
+                'nombre': nombre,
+                'password': generate_password_hash(password),
+                'rol': rol,
+                'token_fcm': '',
+                'autoriza': autoriza,
+                'acceso': acceso
+            })
+            flash('Usuario creado correctamente.', 'success')
+
+        elif accion == 'editar':
+            usuario_id = request.form.get('usuario_id', '')
+            try:
+                object_id = ObjectId(usuario_id)
+            except Exception:
+                abort(400)
+
+            usuario_actual = mongo.db.usuarios.find_one({'_id': object_id})
+            if not usuario_actual:
+                abort(404)
+
+            duplicado = mongo.db.usuarios.find_one({
+                'username': username,
+                '_id': {'$ne': object_id}
+            })
+            if duplicado:
+                flash('Ese nombre de usuario ya pertenece a otro usuario.', 'warning')
+                return redirect(url_for('routes.registro', editar=usuario_id))
+
+            # Evita que el administrador pierda su propia sesión administrativa.
+            if usuario_id == session.get('user_id') and (acceso != 1 or rol != 'admin'):
+                flash('No puedes quitarte tu propio acceso ni el rol administrador.', 'danger')
+                return redirect(url_for('routes.registro', editar=usuario_id))
+
+            cambios = {
+                'username': username,
+                'nombre': nombre,
+                'rol': rol,
+                'autoriza': autoriza,
+                'acceso': acceso
+            }
+            if password:
+                cambios['password'] = generate_password_hash(password)
+
+            mongo.db.usuarios.update_one({'_id': object_id}, {'$set': cambios})
+
+            if usuario_id == session.get('user_id'):
+                session['username'] = username
+                session['nombre'] = nombre
+                session['rol'] = rol
+                session['autoriza'] = autoriza
+                session['acceso'] = acceso
+
+            flash('Usuario actualizado correctamente.', 'success')
+
+        return redirect(url_for('routes.registro'))
+
+    usuario_editar = None
+    editar_id = request.args.get('editar', '').strip()
+    if editar_id:
+        try:
+            usuario_editar = mongo.db.usuarios.find_one({'_id': ObjectId(editar_id)})
+        except Exception:
+            abort(400)
+
+    usuarios = list(mongo.db.usuarios.find().sort('nombre', 1))
+    return render_template(
+        'registro.html',
+        usuarios=usuarios,
+        usuario_editar=usuario_editar,
+        csrf_token=session['csrf_token']
+    )
 
 
 # RUTA: Login

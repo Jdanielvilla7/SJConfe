@@ -60,6 +60,10 @@
       class="{% if request.endpoint == 'routes.ver_asistentes' %}active{% endif %}">
       <i class="fas fa-table-list me-2"></i>Ver Asistentes
     </a>
+    <a href="{{ url_for('routes.registro') }}"
+      class="{% if request.endpoint == 'routes.registro' %}active{% endif %}">
+      <i class="fas fa-users-gear"></i>Administrar usuarios
+    </a>
     {% endif %}
       {% if session.get('autoriza')==1 %}
     
