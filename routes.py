@@ -233,14 +233,36 @@ def cargar_asistentes():
 
     if request.method == 'POST':
         archivo = request.files.get('archivo')
-        if archivo and archivo.filename.endswith('.xlsx'):
+        if archivo and archivo.filename.lower().endswith(('.xlsx', '.xls')):
             try:
-                df = pd.read_excel(archivo)
+                # Leer todo como texto evita que los tickets numéricos terminen en ".0"
+                # y que las celdas vacías se guarden como "nan".
+                df = pd.read_excel(archivo, dtype=str, keep_default_na=False)
+                df.columns = [str(columna).strip() for columna in df.columns]
+
+                columnas_requeridas = {
+                    "Código de barras",
+                    "Nombre del asistente",
+                    "Boleto del evento"
+                }
+                columnas_faltantes = columnas_requeridas.difference(df.columns)
+                if columnas_faltantes:
+                    faltantes = ", ".join(sorted(columnas_faltantes))
+                    flash(f'Faltan columnas obligatorias en el Excel: {faltantes}.', 'danger')
+                    return render_template('cargar_asistentes.html')
+
+                def valor(fila, *columnas):
+                    """Obtiene el primer encabezado disponible, nuevo o anterior."""
+                    for columna in columnas:
+                        if columna in df.columns:
+                            return str(fila.get(columna, '')).strip()
+                    return ''
+
                 insertados = 0
                 duplicados = 0
 
                 for _, fila in df.iterrows():
-                    ticket_id = str(fila.get("Código de barras", "")).strip()
+                    ticket_id = valor(fila, "Código de barras")
 
                     if not ticket_id:
                         continue  # omitir filas vacías
@@ -250,7 +272,7 @@ def cargar_asistentes():
                         duplicados += 1
                         continue
 
-                    boleto_raw = str(fila.get("Boleto del evento", "")).strip()
+                    boleto_raw = valor(fila, "Boleto del evento")
                     if "voluntario" in boleto_raw.lower():
                         boleto = boleto_raw  # conserva el valor original si es voluntario
                     elif "Training Días: 25, 26, 27" in boleto_raw:
@@ -260,21 +282,28 @@ def cargar_asistentes():
 
                     asistente = {
                         "ticket_id": ticket_id,
-                        "nombre": str(fila.get("Nombre del asistente", "")).strip(),
-                        "telefono": str(fila.get("Teléfono", "")).strip(),
-                        "correo": str(fila.get("Correo electrónico", "")).strip(),
+                        "nombre": valor(fila, "Nombre del asistente"),
+                        "telefono": valor(fila, "Teléfono"),
+                        "correo": valor(fila, "Correo electrónico"),
                         "boleto": boleto,
-                        "nombre_completo": str(fila.get("Nombre Completo", "")).strip(),
-                        "sexo": str(fila.get("Sexo", "")).strip(),
-                        "edad": str(fila.get("Edad Actual", "")).strip(),
-                        "miembro_iglesia": str(fila.get("¿Es miembro de Iglesia VidaReal.tv?", "")).strip(),
-                        "etapa_somosjovenes": str(fila.get("¿A qué etapa de Somos.Jóvenes pertenece?", "")).strip(),
-                        "primera_vez": str(fila.get("¿Es su primera vez asistiendo a la conferencia?", "")).strip(),
-                        "telefono_whatsapp": str(fila.get("Teléfono (WhatsApp)", "")).strip(),
-                        "punto_vidareal": str(fila.get("Si respondió “sí”, ¿a qué Punto VidaReal asiste?", "")).strip(),
-                        "talla": str(fila.get("Talla", "")).strip(),
-                        "almuerzo": str(fila.get("Almuerzo", "")).strip(),
-                        "training": str(fila.get("Training", "")).strip()
+                        "nombre_completo": valor(fila, "Nombre", "Nombre Completo"),
+                        "sexo": valor(fila, "Sexo"),
+                        "edad": valor(fila, "Edad", "Edad Actual"),
+                        "etapa_somosjovenes": valor(
+                            fila,
+                            "Etapa en la que sirve",
+                            "¿A qué etapa de Somos.Jóvenes pertenece?"
+                        ),
+                        "area": valor(fila, "Area", "Área"),
+                        "talla": valor(fila, "Talla de playera", "Talla"),
+
+                        # Campos adicionales que pueden seguir llegando en el Excel.
+                        "miembro_iglesia": valor(fila, "¿Es miembro de Iglesia VidaReal.tv?"),
+                        "primera_vez": valor(fila, "¿Es su primera vez asistiendo a la conferencia?"),
+                        "telefono_whatsapp": valor(fila, "Teléfono (WhatsApp)"),
+                        "punto_vidareal": valor(fila, "Si respondió “sí”, ¿a qué Punto VidaReal asiste?"),
+                        "almuerzo": valor(fila, "Almuerzo"),
+                        "training": valor(fila, "Training")
                     }
 
                     mongo.db.asistentes.insert_one(asistente)

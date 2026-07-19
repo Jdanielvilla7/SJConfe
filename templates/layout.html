@@ -23,17 +23,18 @@
 
 <body>
 
-  <!-- Botón de menú para móviles -->
-  <button class="menu-toggle" onclick="toggleSidebar()">☰ Menú</button>
+  <button class="menu-toggle" type="button" onclick="toggleSidebar()" aria-label="Abrir menú">
+    <i class="fas fa-bars"></i>
+  </button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
 
   <!-- Menú lateral -->
   <div class="sidebar" id="sidebar">
-    <div class="text-center mb-4">
+    <div class="sidebar-brand">
       <img src="{{ url_for('static', filename='img/confe_2025.jpg') }}" class="img-fluid rounded"
-        style="max-height: 100px;" alt="Logo Conferencia">
+        alt="Logo Conferencia ETERNO">
     </div>
-
-    <h7 class="text-white mb-3"><i class="fas fa-bars me-2"></i> Menú</h7>
+    <div class="sidebar-label">Navegación</div>
     <a href="{{ url_for('routes.dashboard') }}"
       class="{% if request.endpoint == 'routes.dashboard' %}active{% endif %}">
       <i class="fas fa-home me-2"></i>Dashboard
@@ -70,19 +71,23 @@
     {% endif %}
     <hr class="bg-white">
 
-    <a href="{{ url_for('routes.logout') }}"> <i class="fas fa-lock me-2"></i> Cerrar sesión</a>
+    <a class="sidebar-logout" href="{{ url_for('routes.logout') }}"> <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión</a>
   </div>
 
   <!-- Contenido principal -->
   <div class="content" id="content">
     <!-- Encabezado del contenido -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light rounded shadow-sm  mb-4 px-4">
+    <nav class="navbar topbar">
       <div class="container-fluid">
-        <span class="mb-0 text-muted h6">Confe ETERNO | {% block h1 %}{% endblock %}</span>
+        <div>
+          <div class="page-eyebrow">Conferencia ETERNO</div>
+          <div class="page-title">{% block h1 %}{% endblock %}</div>
+        </div>
         <div class="d-none d-md-flex ms-auto align-items-center">
-          <span class="text-muted me-3 small">
-            Usuario: <strong>{{ session.get('username') }}</strong> | Rol: <strong>{{ session.get('rol') }}</strong>
-          </span>
+          <div class="user-chip">
+            <div class="user-avatar">{{ (session.get('username') or 'U')[0]|upper }}</div>
+            <div class="user-meta"><strong>{{ session.get('username') }}</strong><small>{{ session.get('rol') }}</small></div>
+          </div>
         </div>
       </div>
     </nav>
@@ -107,7 +112,7 @@
       const sidebar = document.getElementById('sidebar');
       const content = document.getElementById('content');
       sidebar.classList.toggle('active');
-      content.classList.toggle('active');
+      document.getElementById('sidebarBackdrop').classList.toggle('active');
     }
   </script>
 

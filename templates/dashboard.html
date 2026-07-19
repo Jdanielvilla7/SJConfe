@@ -4,59 +4,66 @@
 {% block h1 %}Dashboard <i class="fas fa-chart-line"></i>{% endblock %}
 
 {% block content %}
-<div class="container-fluid pt-4">
-  <div class="row justify-content-center g-3">
+<div class="container-fluid px-0">
+  <div class="row g-3">
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-success shadow-sm text-center">
+      <div class="card metric-card metric-success">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-circle-check"></i></div>
           <h6 class="card-title">Con check-in</h6>
           <p class="card-text fs-4">{{ registrados }}</p>
         </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-success shadow-sm text-center">
+      <div class="card metric-card metric-success">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-user-clock"></i></div>
           <h6 class="card-title">Con pre-registro</h6>
           <p class="card-text fs-4">{{ preregistro }}</p>
         </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-danger shadow-sm text-center">
+      <div class="card metric-card metric-danger">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-user-xmark"></i></div>
           <h6 class="card-title">Sin Pre y check-in</h6>
           <p class="card-text fs-4">{{ pendientes_sin_pre }}</p>
         </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-danger shadow-sm text-center">
+      <div class="card metric-card metric-danger">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
           <h6 class="card-title">Total Sin check-in</h6>
           <p class="card-text fs-4">{{ pendientes }}</p>
         </div>
       </div>
     </div>
  <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-primary shadow-sm text-center">
+      <div class="card metric-card metric-primary">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-users"></i></div>
           <h6 class="card-title">Total general </h6>
           <p class="card-text fs-4">{{ total }}</p>
         </div>
       </div>
     </div>
      <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-dark shadow-sm text-center">
+      <div class="card metric-card metric-dark">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-chart-line"></i></div>
           <h6 class="card-title">Avance</h6>
           <p class="card-text fs-4">{{ porcentaje }}%</p>
         </div>
       </div>
     </div>
     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-warning shadow-sm text-center">
+      <div class="card metric-card metric-warning">
         <div class="card-body">
+          <div class="metric-icon"><i class="fas fa-shield-halved"></i></div>
           <h6 class="card-title">C. Especiales</h6>
           <p class="card-text fs-4">{{ casos_especiales }}</p>
         </div>
@@ -68,7 +75,7 @@
   </div>
 </div>
 {% if session.get('rol') == 'admin' %}
-<div class="container mt-4">
+<div class="container-fluid px-0 mt-4">
 
   <form method="GET" class="row g-2 mb-4">
     <div class="col-md-3">
@@ -93,7 +100,7 @@
   </form>
 
   <div class="card shadow-sm">
-    <div class="card-header bg-dark text-white">
+    <div class="card-header">
       <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Segmentos por edad</h5>
     </div>
     <div class="card-body">
@@ -105,7 +112,9 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const ctx = document.getElementById('graficaSegmentos').getContext('2d');
+  const chartCanvas = document.getElementById('graficaSegmentos');
+  if (chartCanvas) {
+  const ctx = chartCanvas.getContext('2d');
 
   const data = {
     labels: {{ datos_segmentos.labels|tojson }},
@@ -142,6 +151,7 @@
   };
 
   new Chart(ctx, config);
+  }
 </script>
 
 {% endblock %}

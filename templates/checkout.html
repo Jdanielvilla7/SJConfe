@@ -126,9 +126,9 @@
           <p><strong class="h6">⚠️ Atención: YA RECOGIO ALMUERZO</strong></p>  
           {% endif %}
           <p><strong class="h6">Menu: {{ asistente.almuerzo }}</strong></p>
-            
-            <p><strong class="h6">Talla Playera: {{ asistente.talla }}</strong></p>
-            
+          {% endif %}
+          {% if asistente.talla %}
+          <p class="alert alert-info py-2"><strong class="h6"><i class="fas fa-shirt me-2"></i>Talla de playera: {{ asistente.talla }}</strong></p>
           {% endif %}
           <p><strong>{{ mensaje }}</strong> </p><hr>
           <p><strong>Nombre:</strong> {{ asistente.nombre }}</p>

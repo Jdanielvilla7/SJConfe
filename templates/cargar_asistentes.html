@@ -23,8 +23,12 @@
       <label for="archivo" class="form-label">Selecciona archivo Excel</label>
       <input type="file" name="archivo" class="form-control" accept=".xlsx,.xls" required>
       <div class="form-text">
-        El archivo debe contener columnas como <code>Código de barras</code>, <code>Nombre del asistente</code>, 
-        <code>Correo electrónico</code>, <code>Boleto del evento</code>, etc.
+        Columnas obligatorias: <code>Código de barras</code>, <code>Nombre del asistente</code> y
+        <code>Boleto del evento</code>.
+      </div>
+      <div class="form-text mt-2">
+        También se importan: <code>Nombre</code>, <code>Edad</code>, <code>Teléfono</code>, <code>Sexo</code>,
+        <code>Etapa en la que sirve</code>, <code>Area</code> y <code>Talla de playera</code>.
       </div>
     </div>
     <button type="submit" class="btn btn-primary"><i class="fas fa-file-upload"></i> Cargar Excel</button>
