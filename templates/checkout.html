@@ -182,32 +182,61 @@
     const html5QrCode = new Html5Qrcode("reader");
     let currentCameraId = null;
     let isScannerRunning = false;
+    let isScannerStarting = false;
     
     const modalElement = document.getElementById('resultadoModal');
     const modalBody = modalElement.querySelector('.modal-body');
     const bootstrapModal = new bootstrap.Modal(modalElement);
 
-    function startScanner() {
-      Html5Qrcode.getCameras().then(devices => {
-        const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
-        currentCameraId = backCamera.id;
+    const scannerConfig = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1
+    };
 
-        html5QrCode.start(
-          { deviceId: { exact: currentCameraId } },
-          { fps: 10, qrbox: 250 },
-          onScanSuccess).then(()=> {
-            isScannerRunning = true
-          }).catch(err => console.error("Error al iniciar escáner:", err));
-      }).catch(err => {
-        alert("Error accediendo a la cámara.");
-        console.error("Error obteniendo cámaras:", err);
-      });
+    async function startScanner() {
+      if (isScannerRunning || isScannerStarting) return;
+      isScannerStarting = true;
+
+      try {
+        // En Safari/iPhone esto solicita directamente la cámara posterior.
+        await html5QrCode.start(
+          { facingMode: { exact: "environment" } },
+          scannerConfig,
+          onScanSuccess
+        );
+        isScannerRunning = true;
+      } catch (environmentError) {
+        try {
+          // Después del primer permiso, iOS ya suele exponer las etiquetas.
+          const devices = await Html5Qrcode.getCameras();
+          if (!devices.length) throw new Error("No se encontraron cámaras");
+
+          const backCamera = devices.find(device =>
+            /back|rear|environment|trasera|posterior/i.test(device.label)
+          ) || devices[devices.length - 1];
+
+          currentCameraId = backCamera.id;
+          await html5QrCode.start(
+            { deviceId: { exact: currentCameraId } },
+            scannerConfig,
+            onScanSuccess
+          );
+          isScannerRunning = true;
+        } catch (cameraError) {
+          console.error("Error al iniciar la cámara trasera:", environmentError, cameraError);
+          alert("No se pudo iniciar la cámara trasera. Revisa los permisos de cámara en Safari.");
+        }
+      } finally {
+        isScannerStarting = false;
+      }
     }
 
     async function onScanSuccess(decodedText) {
-      await html5QrCode.stop().then(() => {
-          isScannerRunning = false;
-      });
+      if (isScannerRunning) {
+        await html5QrCode.stop();
+        isScannerRunning = false;
+      }
       
       // Enviar QR al servidor sin recargar
       const formData = new FormData();
@@ -236,12 +265,12 @@
 
     // Cuando cierra el modal, reinicia escáner
     modalElement.addEventListener("hidden.bs.modal", () => {
-      if (!isScannerRunning) {
+      if (!isScannerRunning && !isScannerStarting) {
         startScanner();
       }
     });
 
-    if (!isScannerRunning) {
+    if (!isScannerRunning && !isScannerStarting) {
         startScanner();
       }
   });
