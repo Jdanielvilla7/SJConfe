@@ -480,10 +480,12 @@ class Usuario:
         self.id = str(user_data['_id'])
         self.username = user_data['username']
         self.nombre = user_data['nombre']
-        self.autoriza = user_data['autoriza']
+        self.autoriza = int(user_data.get('autoriza', 0))
         self.password_hash = user_data['password']
         self.rol = user_data.get('rol', 'staff')  # Por defecto, 'staff'
-        self.acceso =  user_data.get('acceso', 0)
+        # Se admite `acceso` (nombre usado históricamente por la app) y
+        # `accesa` (nombre del campo administrativo en MongoDB).
+        self.acceso = int(user_data.get('accesa', user_data.get('acceso', 0)))
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -511,16 +513,75 @@ def index():
 @rol_requerido('admin')
 def registro():
     if request.method == 'POST':
-        nombre=request.form['name']
-        username = request.form['username']
-        password = generate_password_hash(request.form['password'])
-        rol = request.form.get('rol', 'staff')  
-        autoriza = 0
-        token_fcm = ''
-        mongo.db.usuarios.insert_one({'username': username,'nombre':nombre, 'password': password, 'rol': rol,'token_fcm':token_fcm,'autoriza':autoriza})
-        flash('Usuario creado correctamente.')
-        return redirect(url_for('routes.login'))
-    return render_template('registro.html')
+        user_id = request.form.get('user_id', '').strip()
+        nombre = request.form.get('name', '').strip()
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        rol = request.form.get('rol', 'staff')
+        accesa = 1 if request.form.get('accesa') == '1' else 0
+        autoriza = 1 if request.form.get('autoriza') == '1' else 0
+
+        if not nombre or not username:
+            flash('El nombre y el usuario son obligatorios.', 'danger')
+            return redirect(url_for('routes.registro'))
+
+        if rol not in {'staff', 'coord', 'admin'}:
+            flash('El rol seleccionado no es válido.', 'danger')
+            return redirect(url_for('routes.registro'))
+
+        filtro_duplicado = {'username': username}
+        if user_id:
+            try:
+                object_id = ObjectId(user_id)
+            except Exception:
+                flash('El usuario que intentas editar no es válido.', 'danger')
+                return redirect(url_for('routes.registro'))
+            filtro_duplicado['_id'] = {'$ne': object_id}
+
+        if mongo.db.usuarios.find_one(filtro_duplicado):
+            flash('Ese nombre de usuario ya está en uso.', 'danger')
+            return redirect(url_for('routes.registro'))
+
+        datos = {
+            'username': username,
+            'nombre': nombre,
+            'rol': rol,
+            'autoriza': autoriza,
+            # Mantener ambos campos evita afectar documentos o código legado.
+            'accesa': accesa,
+            'acceso': accesa
+        }
+
+        if user_id:
+            if user_id == session.get('user_id') and accesa == 0:
+                flash('No puedes deshabilitar tu propio acceso.', 'danger')
+                return redirect(url_for('routes.registro'))
+            if password:
+                datos['password'] = generate_password_hash(password)
+            resultado = mongo.db.usuarios.update_one({'_id': object_id}, {'$set': datos})
+            if not resultado.matched_count:
+                flash('No se encontró el usuario que intentas actualizar.', 'danger')
+            else:
+                flash('Usuario actualizado correctamente.', 'success')
+        else:
+            if not password:
+                flash('La contraseña es obligatoria para un usuario nuevo.', 'danger')
+                return redirect(url_for('routes.registro'))
+            datos.update({
+                'password': generate_password_hash(password),
+                'token_fcm': ''
+            })
+            mongo.db.usuarios.insert_one(datos)
+            flash('Usuario creado correctamente.', 'success')
+
+        return redirect(url_for('routes.registro'))
+
+    usuarios = list(mongo.db.usuarios.find({}).sort('nombre', 1))
+    for usuario in usuarios:
+        usuario['id'] = str(usuario['_id'])
+        usuario['accesa'] = int(usuario.get('accesa', usuario.get('acceso', 0)))
+        usuario['autoriza'] = int(usuario.get('autoriza', 0))
+    return render_template('registro.html', usuarios=usuarios)
 
 
 # RUTA: Login

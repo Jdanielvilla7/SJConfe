@@ -1,54 +1,79 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
-  <title>Iniciar sesión</title>
+  <title>Iniciar sesión | SJ Conferencia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.5.0/css/all.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
-  <!-- PWA meta -->
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-  <meta name="theme-color" content="#00834e">
+  <meta name="theme-color" content="#1f5a43">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-512.png') }}">
-
 </head>
 
 <body class="login-page">
-
-  <div class="card" style="width:400px;">
-    <img src="{{ url_for('static', filename='img/logo.png') }}" class="card-img-top" alt="Campa EsTiempo">
-    <div class="card-body">
-      <h4 class="card-title text-center mb-4">Iniciar sesión</h4>
-
-      {% with messages = get_flashed_messages() %}
-      {% if messages %}
-      <div class="alert alert-warning">
-        {{ messages[0] }}
+  <main class="login-shell">
+    <section class="login-story" aria-label="Bienvenida">
+      <div class="story-glow"></div>
+      <img src="{{ url_for('static', filename='img/logo_OLD.png') }}" class="login-logo" alt="Retiro Aún hay más SJ">
+      <div class="story-copy">
+        <span class="eyebrow eyebrow-light"><i class="fa-solid fa-sparkles"></i> Gestión de conferencia</span>
+        <h1>Todo listo para recibirlos.</h1>
+        <p>Administra registros, accesos y asistencia desde un solo lugar.</p>
       </div>
-      {% endif %}
-      {% endwith %}
+      <p class="story-footer">SJ Conferencia <span></span> Plataforma interna</p>
+    </section>
 
-      <form method="POST">
-        <div class="mb-3">
-          <input type="text" class="form-control" name="username" placeholder="Usuario" required>
+    <section class="login-form-panel">
+      <div class="login-form-wrap">
+        <div class="mobile-brand">
+          <img src="{{ url_for('static', filename='img/logo_OLD.png') }}" alt="Retiro Aún hay más SJ">
         </div>
-        <div class="mb-3">
-          <input type="password" class="form-control" name="password" placeholder="Contraseña" required>
-        </div>
-        <button type="submit" class="btn btn-primary w-100">Entrar</button>
-      </form>
-    </div>
-  </div>
+        <span class="eyebrow">Bienvenido de vuelta</span>
+        <h2>Inicia sesión</h2>
+        <p class="login-intro">Ingresa tus credenciales para continuar al panel de control.</p>
 
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert app-alert" role="alert">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span>{{ messages[0] }}</span>
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" class="login-form">
+          <div class="field-group">
+            <label for="username" class="form-label">Usuario</label>
+            <div class="input-icon">
+              <i class="fa-regular fa-user"></i>
+              <input id="username" type="text" class="form-control" name="username" placeholder="Tu nombre de usuario" autocomplete="username" autofocus required>
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="password" class="form-label">Contraseña</label>
+            <div class="input-icon">
+              <i class="fa-solid fa-lock"></i>
+              <input id="password" type="password" class="form-control" name="password" placeholder="Tu contraseña" autocomplete="current-password" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-brand login-submit">
+            Entrar a la plataforma <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+        <p class="login-help"><i class="fa-solid fa-shield-halved"></i> Acceso exclusivo para personal autorizado</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
+        .catch(err => console.warn("Error al registrar SW:", err));
+    }
+  </script>
 </body>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
-      .then(reg => console.log("Service Worker registrado:", reg))
-      .catch(err => console.warn("Error al registrar SW:", err));
-  }
-</script>
-
 </html>

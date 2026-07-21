@@ -1,32 +1,233 @@
 {% extends "layout.html" %}
 
-{% block title %}Registro de Usuario{% endblock %}
-{% block h1 %}Registro de Usuario {% endblock %}
+{% block title %}Usuarios | SJ Conferencia{% endblock %}
+{% block h1 %}Usuarios{% endblock %}
 
 {% block content %}
-<div class="container mt-5" style="max-width: 500px;">
-  <form method="POST" class="card p-4 shadow-sm border-0 bg-light">
-      <div class="mb-3">
-      <label for="name" class="form-label">Nombre</label>
-      <input type="text" name="name" class="form-control" placeholder="Nombre" required>
+<section class="page-section users-page">
+  <div class="users-heading">
+    <div>
+      <span class="eyebrow"><i class="fa-solid fa-users-gear"></i> Administración</span>
+      <h2>Usuarios y permisos</h2>
+      <p>Crea cuentas y mantén actualizados sus permisos de acceso y autorización.</p>
     </div>
-    <div class="mb-3">
-      <label for="username" class="form-label">Usuario</label>
-      <input type="text" name="username" class="form-control" placeholder="Usuario" required>
+    <button type="button" class="btn btn-brand" id="new-user-button">
+      <i class="fa-solid fa-user-plus"></i> Nuevo usuario
+    </button>
+  </div>
+
+  <div class="users-layout">
+    <form method="POST" class="app-card user-form" id="user-form">
+      <input type="hidden" name="user_id" id="user_id">
+
+      <div class="form-card-heading">
+        <div class="form-card-icon"><i class="fa-solid fa-user-plus" id="form-heading-icon"></i></div>
+        <div>
+          <h3 id="form-title">Crear usuario</h3>
+          <p id="form-subtitle">Completa los datos de la nueva cuenta.</p>
+        </div>
+      </div>
+
+      <div class="form-grid single-column">
+        <div class="field-group">
+          <label for="name" class="form-label">Nombre completo</label>
+          <div class="input-icon">
+            <i class="fa-regular fa-user"></i>
+            <input id="name" type="text" name="name" class="form-control" placeholder="Ej. Andrea López" autocomplete="off" required>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="username" class="form-label">Nombre de usuario</label>
+          <div class="input-icon">
+            <i class="fa-solid fa-at"></i>
+            <input id="username" type="text" name="username" class="form-control" placeholder="andrea.lopez" autocomplete="off" required>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="password" class="form-label">Contraseña</label>
+          <div class="input-icon">
+            <i class="fa-solid fa-lock"></i>
+            <input id="password" type="password" name="password" class="form-control" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" required>
+          </div>
+          <span class="field-hint" id="password-hint">Obligatoria para crear la cuenta.</span>
+        </div>
+
+        <div class="field-group">
+          <label for="rol" class="form-label">Rol</label>
+          <select id="rol" name="rol" class="form-select">
+            <option value="staff">Staff — registro y check-in</option>
+            <option value="coord">Coordinador — gestión operativa</option>
+            <option value="admin">Administrador — acceso completo</option>
+          </select>
+        </div>
+
+        <fieldset class="permissions-fieldset">
+          <legend>Permisos adicionales</legend>
+          <label class="permission-option" for="accesa">
+            <span class="permission-icon"><i class="fa-solid fa-door-open"></i></span>
+            <span class="permission-copy">
+              <strong>Acceso a la plataforma</strong>
+              <small>Permite iniciar sesión y utilizar el sistema.</small>
+            </span>
+            <span class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" name="accesa" id="accesa" value="1" checked>
+            </span>
+          </label>
+
+          <label class="permission-option" for="autoriza">
+            <span class="permission-icon"><i class="fa-solid fa-user-shield"></i></span>
+            <span class="permission-copy">
+              <strong>Autoriza casos especiales</strong>
+              <small>Puede aprobar o rechazar solicitudes pendientes.</small>
+            </span>
+            <span class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" name="autoriza" id="autoriza" value="1">
+            </span>
+          </label>
+        </fieldset>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost d-none" id="cancel-edit">Cancelar edición</button>
+        <button type="submit" class="btn btn-brand" id="submit-button">
+          Crear usuario <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </form>
+
+    <div class="app-card users-list-card">
+      <div class="list-heading">
+        <div>
+          <h3>Equipo registrado</h3>
+          <p>{{ usuarios|length }} usuario{% if usuarios|length != 1 %}s{% endif %} en la plataforma</p>
+        </div>
+        <div class="search-box input-icon">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="user-search" class="form-control" placeholder="Buscar usuario..." aria-label="Buscar usuario">
+        </div>
+      </div>
+
+      <div class="users-table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Rol</th>
+              <th>Acceso</th>
+              <th>Autoriza</th>
+              <th><span class="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body">
+            {% for user in usuarios %}
+            <tr data-search="{{ (user.nombre ~ ' ' ~ user.username ~ ' ' ~ user.rol)|lower }}">
+              <td>
+                <div class="user-cell">
+                  <span class="user-avatar">{{ (user.nombre or user.username)[:1]|upper }}</span>
+                  <span><strong>{{ user.nombre }}</strong><small>@{{ user.username }}</small></span>
+                </div>
+              </td>
+              <td><span class="role-badge role-{{ user.rol }}">{{ {'staff': 'Staff', 'coord': 'Coordinador', 'admin': 'Admin'}.get(user.rol, user.rol) }}</span></td>
+              <td>
+                <span class="status-badge {{ 'is-active' if user.accesa == 1 else 'is-inactive' }}">
+                  <i class="fa-solid fa-circle"></i> {{ 'Activo' if user.accesa == 1 else 'Inactivo' }}
+                </span>
+              </td>
+              <td>
+                <span class="status-badge {{ 'is-authorizer' if user.autoriza == 1 else 'is-neutral' }}">
+                  {{ 'Sí' if user.autoriza == 1 else 'No' }}
+                </span>
+              </td>
+              <td class="action-cell">
+                <button type="button" class="icon-button edit-user"
+                  aria-label="Editar a {{ user.nombre }}"
+                  data-id="{{ user.id }}"
+                  data-name="{{ user.nombre }}"
+                  data-username="{{ user.username }}"
+                  data-role="{{ user.rol }}"
+                  data-accesa="{{ user.accesa }}"
+                  data-autoriza="{{ user.autoriza }}">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty-state">Aún no hay usuarios registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="empty-search d-none" id="empty-search">No se encontraron usuarios con ese criterio.</p>
     </div>
-    <div class="mb-3">
-      <label for="password" class="form-label">Contraseña</label>
-      <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
-    </div>
-    <div class="mb-3">
-      <label for="rol" class="form-label">Rol</label>
-      <select name="rol" class="form-select">
-        <option value="staff">Staff</option>
-        <option value="coord">Coordinator</option>
-        <option value="admin">Admin</option>
-      </select>
-    </div>
-    <button type="submit" class="btn btn-primary w-100">Registrar Usuario</button>
-  </form>
-</div>
+  </div>
+</section>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('user-form');
+    const userId = document.getElementById('user_id');
+    const password = document.getElementById('password');
+    const cancelEdit = document.getElementById('cancel-edit');
+    const title = document.getElementById('form-title');
+    const subtitle = document.getElementById('form-subtitle');
+    const submit = document.getElementById('submit-button');
+    const headingIcon = document.getElementById('form-heading-icon');
+
+    function resetForm() {
+      form.reset();
+      userId.value = '';
+      document.getElementById('accesa').checked = true;
+      password.required = true;
+      password.placeholder = 'Mínimo 8 caracteres';
+      document.getElementById('password-hint').textContent = 'Obligatoria para crear la cuenta.';
+      title.textContent = 'Crear usuario';
+      subtitle.textContent = 'Completa los datos de la nueva cuenta.';
+      submit.innerHTML = 'Crear usuario <i class="fa-solid fa-arrow-right"></i>';
+      headingIcon.className = 'fa-solid fa-user-plus';
+      cancelEdit.classList.add('d-none');
+    }
+
+    document.querySelectorAll('.edit-user').forEach(button => {
+      button.addEventListener('click', () => {
+        userId.value = button.dataset.id;
+        document.getElementById('name').value = button.dataset.name;
+        document.getElementById('username').value = button.dataset.username;
+        document.getElementById('rol').value = button.dataset.role;
+        document.getElementById('accesa').checked = button.dataset.accesa === '1';
+        document.getElementById('autoriza').checked = button.dataset.autoriza === '1';
+        password.value = '';
+        password.required = false;
+        password.placeholder = 'Dejar vacía para conservarla';
+        document.getElementById('password-hint').textContent = 'Solo escríbela si deseas cambiarla.';
+        title.textContent = 'Editar usuario';
+        subtitle.textContent = `Actualizando la cuenta de ${button.dataset.name}.`;
+        submit.innerHTML = 'Guardar cambios <i class="fa-solid fa-check"></i>';
+        headingIcon.className = 'fa-solid fa-user-pen';
+        cancelEdit.classList.remove('d-none');
+        form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById('name').focus({ preventScroll: true });
+      });
+    });
+
+    cancelEdit.addEventListener('click', resetForm);
+    document.getElementById('new-user-button').addEventListener('click', () => {
+      resetForm();
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    const search = document.getElementById('user-search');
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll('#users-table-body tr[data-search]').forEach(row => {
+        const matches = row.dataset.search.includes(query);
+        row.classList.toggle('d-none', !matches);
+        if (matches) visible += 1;
+      });
+      document.getElementById('empty-search').classList.toggle('d-none', visible !== 0);
+    });
+  });
+</script>
 {% endblock %}
