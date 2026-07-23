@@ -137,6 +137,9 @@ body {
 .metric-segments > div + div { border-top:1px solid #edf0ef; }
 .metric-segments span { color:var(--muted); font-size:.74rem; font-weight:600; }
 .metric-segments strong { color:var(--ink); font-size:1rem; }
+.dashboard-filters { box-shadow:0 5px 18px rgba(21,48,40,.05) !important; }
+.chart-card { min-height:390px; }
+.chart-wrap { position:relative; height:285px; }
 
 .btn { padding:.62rem 1rem; border-radius:10px; font-weight:600; box-shadow:none !important; transition:transform .15s, box-shadow .15s; }
 .btn:hover { transform:translateY(-1px); }

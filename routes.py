@@ -20,6 +20,7 @@ import logging
 import hmac
 import secrets
 import unicodedata
+import re
 
 logging.basicConfig(
     level=logging.INFO,
@@ -282,37 +283,6 @@ def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
 
-    total = mongo.db.asistentes.count_documents({})
-    registrados = mongo.db.asistentes.count_documents({'checked_in': True})
-    registrados_basicos = mongo.db.asistentes.count_documents({
-        'checked_in': True,
-        'boleto': {'$in': ['Basico', 'Básico']}
-    })
-    registrados_completos = mongo.db.asistentes.count_documents({
-        'checked_in': True,
-        'boleto': {'$in': ['Experiencia Completa', 'Completo']}
-    })
-    registrados_voluntarios = mongo.db.asistentes.count_documents({
-        'checked_in': True,
-        'boleto': {'$regex': 'voluntario', '$options': 'i'}
-    })
-    filtro_pendientes = {'checked_in': {'$ne': True}}
-    pendientes = mongo.db.asistentes.count_documents(filtro_pendientes)
-    pendientes_voluntarios = mongo.db.asistentes.count_documents({
-        **filtro_pendientes,
-        'boleto': {'$regex': 'voluntario', '$options': 'i'}
-    })
-    pendientes_basicos = mongo.db.asistentes.count_documents({
-        **filtro_pendientes,
-        'boleto': {'$in': ['Basico', 'Básico']}
-    })
-    pendientes_completos = mongo.db.asistentes.count_documents({
-        **filtro_pendientes,
-        'boleto': {'$in': ['Experiencia Completa', 'Completo']}
-    })
-    porcentaje = round(((registrados ) / total * 100), 2) if total else 0
-    casos_especiales = mongo.db.casos_especiales.count_documents({})
-
     tipo = request.args.get('boleto', 'todos')
     sexo = request.args.get('sexo', 'todos')
 
@@ -324,31 +294,79 @@ def dashboard():
         elif tipo == 'Voluntario':
             filtro['boleto'] = {'$regex': 'voluntario', '$options': 'i'}
         else:
-            filtro['boleto'] = tipo
+            filtro['boleto'] = {'$in': ['Basico', 'Básico']}
     if sexo != 'todos':
         filtro['sexo'] = sexo
+
+    def contar(condicion=None):
+        """Aplica los filtros seleccionados a todas las métricas."""
+        condiciones = []
+        if filtro:
+            condiciones.append(filtro)
+        if condicion:
+            condiciones.append(condicion)
+        if not condiciones:
+            consulta = {}
+        elif len(condiciones) == 1:
+            consulta = condiciones[0]
+        else:
+            consulta = {'$and': condiciones}
+        return mongo.db.asistentes.count_documents(consulta)
+
+    boleto_basico = {'boleto': {'$in': ['Basico', 'Básico']}}
+    boleto_completo = {'boleto': {'$in': ['Experiencia Completa', 'Completo']}}
+    boleto_voluntario = {'boleto': {'$regex': 'voluntario', '$options': 'i'}}
+    con_checkin = {'checked_in': True}
+    sin_checkin = {'checked_in': {'$ne': True}}
+
+    total = contar()
+    registrados = contar(con_checkin)
+    registrados_basicos = contar({'$and': [con_checkin, boleto_basico]})
+    registrados_completos = contar({'$and': [con_checkin, boleto_completo]})
+    registrados_voluntarios = contar({'$and': [con_checkin, boleto_voluntario]})
+    pendientes = contar(sin_checkin)
+    pendientes_basicos = contar({'$and': [sin_checkin, boleto_basico]})
+    pendientes_completos = contar({'$and': [sin_checkin, boleto_completo]})
+    pendientes_voluntarios = contar({'$and': [sin_checkin, boleto_voluntario]})
+    porcentaje = round((registrados / total * 100), 2) if total else 0
+    casos_especiales = mongo.db.casos_especiales.count_documents({})
 
     asistentes = list(mongo.db.asistentes.find(filtro, {'edad': 1}))
 
     def obtener_edad(asistente):
-        try:
-            return int(asistente.get('edad', 0))
-        except (ValueError, TypeError):
-            return 0
-    segmento_12_14 = sum(1 for a in asistentes if obtener_edad(a) <= 14)
-    segmento_15_17 = sum(1 for a in asistentes if 15 <= obtener_edad(a) <= 17)
-    segmento_18_24 = sum(1 for a in asistentes if 18 <= obtener_edad(a) <= 24)
-    segmento_25_mas = sum(1 for a in asistentes if obtener_edad(a) >= 25)
+        coincidencia = re.search(r'\d+', str(asistente.get('edad', '')))
+        return int(coincidencia.group()) if coincidencia else None
+
+    edades = [edad for edad in (obtener_edad(a) for a in asistentes) if edad is not None]
+    segmento_12_14 = sum(1 for edad in edades if 12 <= edad <= 14)
+    segmento_15_17 = sum(1 for edad in edades if 15 <= edad <= 17)
+    segmento_18_24 = sum(1 for edad in edades if 18 <= edad <= 24)
+    segmento_25_mas = sum(1 for edad in edades if edad >= 25)
 
     datos_segmentos = {
-        "labels": ["12-14","15-17 años", "18-24 años", "25-30+ años"],
+        "labels": ["12-14 años", "15-17 años", "18-24 años", "25 años o más"],
         "valores": [segmento_12_14,segmento_15_17, segmento_18_24, segmento_25_mas]
     }
+
+    boletos_basicos = contar(boleto_basico)
+    boletos_completos = contar(boleto_completo)
+    boletos_voluntarios = contar(boleto_voluntario)
+    boletos_otros = max(total - boletos_basicos - boletos_completos - boletos_voluntarios, 0)
+    datos_boletos = {
+        "labels": ["Básico", "Experiencia Completa", "Voluntarios"] + (["Otros"] if boletos_otros else []),
+        "valores": [boletos_basicos, boletos_completos, boletos_voluntarios] + ([boletos_otros] if boletos_otros else [])
+    }
+    opciones_sexo = sorted(
+        valor for valor in mongo.db.asistentes.distinct('sexo')
+        if isinstance(valor, str) and valor.strip()
+    )
 
 
     return render_template(
         'dashboard.html',
         datos_segmentos=datos_segmentos, 
+        datos_boletos=datos_boletos,
+        opciones_sexo=opciones_sexo,
         filtro_tipo=tipo, 
         filtro_sexo=sexo,
         total=total,

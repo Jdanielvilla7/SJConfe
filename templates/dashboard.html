@@ -73,36 +73,55 @@
 </div>
 {% if session.get('rol') == 'admin' %}
 <div class="container-fluid px-0 mt-4">
-
-  <form method="GET" class="row g-2 mb-4">
-    <div class="col-md-3">
-      <label class="form-label">Tipo de boleto</label>
-      <select name="boleto" class="form-select">
-        <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos</option>
-        <option value="Basico" {% if filtro_tipo == 'Basico' %}selected{% endif %}>Básico</option>
-        <option value="Experiencia Completa" {% if filtro_tipo == 'Experiencia Completa' %}selected{% endif %}>Experiencia Completa</option>
-        <option value="Voluntario" {% if filtro_tipo == 'Voluntario' %}selected{% endif %}>Voluntario</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Sexo</label>
-      <select name="sexo" class="form-select">
-        <option value="todos" {% if filtro_sexo == 'todos' %}selected{% endif %}>Todos</option>
-        <option value="Hombre" {% if filtro_sexo == 'Hombre' %}selected{% endif %}>Chicos</option>
-        <option value="Mujer" {% if filtro_sexo == 'Mujer' %}selected{% endif %}>Chicas</option>
-      </select>
-    </div>
-    <div class="col-md-2 align-self-end">
-      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-    </div>
-  </form>
-
-  <div class="card shadow-sm">
-    <div class="card-header">
-      <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Segmentos por edad</h5>
-    </div>
+  <div class="card dashboard-filters mb-4">
     <div class="card-body">
-      <canvas id="graficaSegmentos" width="400" height="180"></canvas>
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label" for="filtro-boleto">Tipo de boleto</label>
+          <select id="filtro-boleto" name="boleto" class="form-select">
+            <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos los boletos</option>
+            <option value="Basico" {% if filtro_tipo == 'Basico' %}selected{% endif %}>Básico</option>
+            <option value="Experiencia Completa" {% if filtro_tipo == 'Experiencia Completa' %}selected{% endif %}>Experiencia Completa</option>
+            <option value="Voluntario" {% if filtro_tipo == 'Voluntario' %}selected{% endif %}>Voluntario</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="filtro-sexo">Sexo</label>
+          <select id="filtro-sexo" name="sexo" class="form-select">
+            <option value="todos" {% if filtro_sexo == 'todos' %}selected{% endif %}>Todos</option>
+            {% for opcion in opciones_sexo %}
+            <option value="{{ opcion }}" {% if filtro_sexo == opcion %}selected{% endif %}>{{ opcion }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1"><i class="fas fa-filter me-2"></i>Aplicar</button>
+          {% if filtro_tipo != 'todos' or filtro_sexo != 'todos' %}
+          <a href="{{ url_for('routes.dashboard') }}" class="btn btn-light" title="Limpiar filtros"><i class="fas fa-rotate-left"></i></a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card chart-card h-100">
+        <div class="card-header">
+          <h5 class="mb-1">Distribución por edad</h5>
+          <p class="text-muted small mb-0">Asistentes según los filtros seleccionados</p>
+        </div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="graficaSegmentos"></canvas></div></div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card chart-card h-100">
+        <div class="card-header">
+          <h5 class="mb-1">Distribución de boletos</h5>
+          <p class="text-muted small mb-0">Composición del grupo mostrado</p>
+        </div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="graficaBoletos"></canvas></div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -110,45 +129,58 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const chartCanvas = document.getElementById('graficaSegmentos');
-  if (chartCanvas) {
-  const ctx = chartCanvas.getContext('2d');
+  Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+  Chart.defaults.color = "#68737f";
 
-  const data = {
-    labels: {{ datos_segmentos.labels|tojson }},
-    datasets: [{
-      label: 'Cantidad de asistentes',
-      data: {{ datos_segmentos.valores|tojson }},
-      backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e'],
-      borderColor: ['#2e59d9', '#17a673', '#e0a800'],
-      borderWidth: 1
-    }]
-  };
-
-  const config = {
-    type: 'bar',
-    data: data,
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: 'Distribución por edad'
-        }
+  const ageCanvas = document.getElementById('graficaSegmentos');
+  if (ageCanvas) {
+    new Chart(ageCanvas, {
+      type: 'bar',
+      data: {
+        labels: {{ datos_segmentos.labels|tojson }},
+        datasets: [{
+          data: {{ datos_segmentos.valores|tojson }},
+          backgroundColor: '#2ba77b',
+          hoverBackgroundColor: '#087f5b',
+          borderRadius: 8,
+          borderSkipped: false,
+          barThickness: 24
+        }]
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1
-          }
+      options: {
+        indexAxis: 'y',
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#edf0ef' }, border: { display: false } },
+          y: { grid: { display: false }, border: { display: false } }
         }
       }
-    },
-  };
+    });
+  }
 
-  new Chart(ctx, config);
+  const ticketCanvas = document.getElementById('graficaBoletos');
+  if (ticketCanvas) {
+    new Chart(ticketCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: {{ datos_boletos.labels|tojson }},
+        datasets: [{
+          data: {{ datos_boletos.valores|tojson }},
+          backgroundColor: ['#4aa8d8', '#f0a53a', '#2ba77b', '#a7b0ab'],
+          borderColor: '#ffffff',
+          borderWidth: 4,
+          hoverOffset: 5
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 18 } }
+        }
+      }
+    });
   }
 </script>
 
