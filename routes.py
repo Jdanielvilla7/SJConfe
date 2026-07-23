@@ -19,6 +19,7 @@ from flask import abort
 import logging
 import hmac
 import secrets
+import unicodedata
 
 logging.basicConfig(
     level=logging.INFO,
@@ -283,13 +284,25 @@ def dashboard():
 
     total = mongo.db.asistentes.count_documents({})
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
-    pre = mongo.db.asistentes.count_documents({'pre_registro': True})
-    pre_check = mongo.db.asistentes.count_documents({
-    'pre_registro': True,
-    'checked_in': True})
-    pre = pre - pre_check
-    pendientes = total - registrados 
-    pendientes_sin_pre = pendientes - pre
+    filtro_pendientes = {'checked_in': {'$ne': True}}
+    pendientes = mongo.db.asistentes.count_documents(filtro_pendientes)
+    pendientes_voluntarios = mongo.db.asistentes.count_documents({
+        **filtro_pendientes,
+        'boleto': {'$regex': 'voluntario', '$options': 'i'}
+    })
+    pendientes_normales = pendientes - pendientes_voluntarios
+    pendientes_basicos = mongo.db.asistentes.count_documents({
+        **filtro_pendientes,
+        'boleto': {'$in': ['Basico', 'Básico']}
+    })
+    pendientes_completos = mongo.db.asistentes.count_documents({
+        **filtro_pendientes,
+        'boleto': {'$in': ['Experiencia Completa', 'Completo']}
+    })
+    pendientes_otros = max(
+        pendientes_normales - pendientes_basicos - pendientes_completos,
+        0
+    )
     porcentaje = round(((registrados ) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos_especiales.count_documents({})
 
@@ -297,8 +310,14 @@ def dashboard():
     sexo = request.args.get('sexo', 'todos')
 
     filtro = {}
-    if tipo != 'todos': 
-        filtro['boleto'] = tipo
+    if tipo != 'todos':
+        if tipo == 'Experiencia Completa':
+            # Mantiene visibles registros importados antes del cambio de nombre.
+            filtro['boleto'] = {'$in': ['Experiencia Completa', 'Completo']}
+        elif tipo == 'Voluntario':
+            filtro['boleto'] = {'$regex': 'voluntario', '$options': 'i'}
+        else:
+            filtro['boleto'] = tipo
     if sexo != 'todos':
         filtro['sexo'] = sexo
 
@@ -327,11 +346,14 @@ def dashboard():
         filtro_sexo=sexo,
         total=total,
         registrados=registrados,
-        preregistro=pre,
         pendientes=pendientes,
+        pendientes_voluntarios=pendientes_voluntarios,
+        pendientes_normales=pendientes_normales,
+        pendientes_basicos=pendientes_basicos,
+        pendientes_completos=pendientes_completos,
+        pendientes_otros=pendientes_otros,
         porcentaje=porcentaje,
-        casos_especiales=casos_especiales,
-        pendientes_sin_pre = pendientes_sin_pre
+        casos_especiales=casos_especiales
     )
 
 
@@ -378,6 +400,14 @@ def cargar_asistentes():
                             return str(fila.get(columna, '')).strip()
                     return ''
 
+                def normalizar(texto):
+                    """Compara textos sin depender de mayúsculas ni acentos."""
+                    texto = unicodedata.normalize('NFKD', str(texto))
+                    return ''.join(
+                        caracter for caracter in texto
+                        if not unicodedata.combining(caracter)
+                    ).upper().strip()
+
                 insertados = 0
                 duplicados = 0
 
@@ -393,12 +423,16 @@ def cargar_asistentes():
                         continue
 
                     boleto_raw = valor(fila, "Boleto del evento")
-                    if "voluntario" in boleto_raw.lower():
-                        boleto = boleto_raw  # conserva el valor original si es voluntario
-                    elif "Training Días: 25, 26, 27" in boleto_raw:
-                        boleto = "Completo"
-                    else:
+                    boleto_normalizado = normalizar(boleto_raw)
+                    if "VOLUNTARIOS" in boleto_normalizado or "VOLUNTARIO" in boleto_normalizado:
+                        boleto = "Voluntario"
+                    elif "3 DIAS" in boleto_normalizado:
+                        boleto = "Experiencia Completa"
+                    elif "2 DIAS" in boleto_normalizado:
                         boleto = "Basico"
+                    else:
+                        # No inventar una categoría si aparece un formato nuevo.
+                        boleto = boleto_raw
 
                     asistente = {
                         "ticket_id": ticket_id,
@@ -412,9 +446,11 @@ def cargar_asistentes():
                         "etapa_somosjovenes": valor(
                             fila,
                             "Etapa en la que sirve",
+                            "Etapa",
                             "¿A qué etapa de Somos.Jóvenes pertenece?"
                         ),
                         "area": valor(fila, "Area", "Área"),
+                        "sede": valor(fila, "Sede a la que asiste"),
                         "talla": valor(fila, "Talla de playera", "Talla"),
 
                         # Campos adicionales que pueden seguir llegando en el Excel.

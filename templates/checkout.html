@@ -84,7 +84,7 @@
     <div class="modal-content">
 
       {% set is_voluntario = asistente and 'voluntario' in asistente.get('boleto', '').lower() %}
-      {% set is_completo = asistente and asistente.get('boleto') == 'Completo' %}
+      {% set is_completo = asistente and asistente.get('boleto') in ['Experiencia Completa', 'Completo'] %}
       {% set modal_color = (
           'bg-dark text-white' if is_voluntario else
           'bg-warning text-dark' if is_completo else
@@ -102,7 +102,7 @@
       ) %}
       {% set texto_boleto = (
           'Voluntario - ¡Gracias por servir! Colocar brazalete NEGRO ⚫' if is_voluntario else
-          '¡Boleto COMPLETO! Entregar brazalete NARANJA 🟧' if is_completo else
+          '¡EXPERIENCIA COMPLETA! Entregar brazalete NARANJA 🟧' if is_completo else
           'Boleto BÁSICO - Entregar brazalete CELESTE 🟦'
       ) %}
 
