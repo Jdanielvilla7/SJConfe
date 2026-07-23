@@ -1,67 +1,162 @@
 {% extends 'layout.html' %}
 
 {% block title %}Asistentes{% endblock %}
-
-{% block h1 %}Lista de Asistentes <i class="fas fa-users"></i>{% endblock %}
+{% block h1 %}Lista de asistentes <i class="fas fa-users ms-2"></i>{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  
-
-  <form method="POST" class="mb-4" action="{{ url_for('routes.checkin_manual')}}">
-    <div class="input-group">
-      <input type="text" name="busqueda" class="form-control" placeholder="Buscar por nombre, correo o ticket..." value="{{ query }}">
-      <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Buscar</button>
+<div class="container-fluid px-0">
+  <div class="card mb-4">
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('routes.ver_asistentes') }}" class="row g-3 align-items-end">
+        <div class="col-lg-7">
+          <label for="q" class="form-label">Buscar asistente</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input id="q" type="search" name="q" class="form-control border-start-0"
+              placeholder="Nombre, correo, teléfono o ticket" value="{{ query or '' }}">
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+          <label for="checkin" class="form-label">Estado de check-in</label>
+          <select id="checkin" name="checkin" class="form-select">
+            <option value="todos" {{ 'selected' if filtro_checkin == 'todos' else '' }}>Todos</option>
+            <option value="si" {{ 'selected' if filtro_checkin == 'si' else '' }}>Con check-in</option>
+            <option value="no" {{ 'selected' if filtro_checkin == 'no' else '' }}>Sin check-in</option>
+          </select>
+        </div>
+        <div class="col-md-6 col-lg-2 d-flex gap-2">
+          <button class="btn btn-primary flex-grow-1" type="submit">Filtrar</button>
+          {% if query or filtro_checkin != 'todos' %}
+          <a href="{{ url_for('routes.ver_asistentes') }}" class="btn btn-light" title="Limpiar filtros"><i class="fas fa-rotate-left"></i></a>
+          {% endif %}
+        </div>
+      </form>
     </div>
-  </form>
-
-  <div class="table-responsive shadow rounded bg-white p-3">
-    <table class="table table-hover align-middle">
-      <thead class="table-dark">
-        <tr>
-          <th>Ticket</th>
-          <th>Nombre</th>
-          <th>Correo</th>
-          <th>Boleto</th> 
-          <th>Etapa</th>          
-          <th>Pre-Registro</th>          
-          <th>Check-in</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for asistente in asistentes %}
-        <tr>
-          <td>{{ asistente.ticket_id or '—' }}</td>
-          <td>{{ asistente.nombre }}</td>
-          <td>{{ asistente.correo }}</td>
-          <td>{{ asistente.boleto }}</td>
-          <td>{{ asistente.etapa_somosjovenes }}</td>   
-          <td>
-            {% if asistente.pre_registro %}
-              <span class="text-success"><i class="fas fa-check-circle"></i> Sí</span>
-            {% else %}
-              <span class="text-danger"><i class="fas fa-times-circle"></i> No</span>
-            {% endif %}
-          </td>     
-          <td>
-            {% if asistente.checked_in %}
-              <span class="text-success"><i class="fas fa-check-circle"></i> Sí</span>
-            {% else %}
-              <span class="text-danger"><i class="fas fa-times-circle"></i> No</span>
-            {% endif %}
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4" class="text-center text-muted">No se encontraron asistentes.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
   </div>
 
-  <div class="mt-4 text-center">
-    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Volver al Dashboard</a>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="mb-1">Asistentes</h5>
+        <p class="text-muted small mb-0">{{ asistentes|length }} resultado{{ '' if asistentes|length == 1 else 's' }}</p>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle attendee-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Asistente</th>
+              <th>Contacto</th>
+              <th>Boleto</th>
+              <th>Check-in</th>
+              <th class="text-end">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asistente in asistentes %}
+            <tr>
+              <td><code>{{ asistente.ticket_id or '—' }}</code></td>
+              <td>
+                <strong>{{ asistente.nombre or asistente.nombre_completo or 'Sin nombre' }}</strong>
+                {% if asistente.edad or asistente.sexo %}
+                <small class="d-block text-muted">{{ asistente.edad or '—' }} años · {{ asistente.sexo or '—' }}</small>
+                {% endif %}
+              </td>
+              <td>
+                <span>{{ asistente.correo or '—' }}</span>
+                {% if asistente.telefono %}<small class="d-block text-muted">{{ asistente.telefono }}</small>{% endif %}
+              </td>
+              <td><span class="badge text-bg-light">{{ asistente.boleto or 'Sin clasificar' }}</span></td>
+              <td>
+                {% if asistente.checked_in %}
+                <span class="status-pill status-success"><i class="fas fa-check"></i> Realizado</span>
+                {% else %}
+                <span class="status-pill status-pending"><i class="fas fa-clock"></i> Pendiente</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary attendee-details"
+                  data-bs-toggle="modal" data-bs-target="#asistenteModal"
+                  data-ticket="{{ asistente.ticket_id|default('', true)|e }}"
+                  data-nombre="{{ asistente.nombre|default('', true)|e }}"
+                  data-nombre-completo="{{ asistente.nombre_completo|default('', true)|e }}"
+                  data-boleto="{{ asistente.boleto|default('', true)|e }}"
+                  data-edad="{{ asistente.edad|default('', true)|e }}"
+                  data-sexo="{{ asistente.sexo|default('', true)|e }}"
+                  data-correo="{{ asistente.correo|default('', true)|e }}"
+                  data-telefono="{{ asistente.telefono|default('', true)|e }}"
+                  data-whatsapp="{{ asistente.telefono_whatsapp|default('', true)|e }}"
+                  data-etapa="{{ asistente.etapa_somosjovenes|default('', true)|e }}"
+                  data-area="{{ asistente.area|default('', true)|e }}"
+                  data-sede="{{ asistente.sede|default('', true)|e }}"
+                  data-talla="{{ asistente.talla|default('', true)|e }}"
+                  data-miembro="{{ asistente.miembro_iglesia|default('', true)|e }}"
+                  data-primera-vez="{{ asistente.primera_vez|default('', true)|e }}"
+                  data-punto="{{ asistente.punto_vidareal|default('', true)|e }}"
+                  data-almuerzo="{{ asistente.almuerzo|default('', true)|e }}"
+                  data-training="{{ asistente.training|default('', true)|e }}"
+                  data-checkin="{{ 'Sí' if asistente.checked_in else 'No' }}"
+                  data-fecha-checkin="{{ asistente.fecha_checkin_texto if asistente.timestamp_checkin else '' }}"
+                  data-registrado-por="{{ asistente.registrado_por|default('', true)|e }}"
+                  data-origen="{{ asistente.checkin_origen|default('', true)|e }}">
+                  <i class="fas fa-eye me-1"></i> Ver
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="py-5 text-center text-muted"><i class="fas fa-user-slash d-block fs-3 mb-2"></i>No se encontraron asistentes.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
+
+<div class="modal fade" id="asistenteModal" tabindex="-1" aria-labelledby="asistenteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div><div class="page-eyebrow">Detalle del asistente</div><h5 class="modal-title" id="asistenteModalLabel">Información completa</h5></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="attendee-detail-grid" id="attendeeDetailGrid"></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('asistenteModal').addEventListener('show.bs.modal', event => {
+    const data = event.relatedTarget.dataset;
+    const campos = [
+      ['Nombre del asistente', data.nombre], ['Nombre', data.nombreCompleto],
+      ['Ticket', data.ticket], ['Tipo de boleto', data.boleto],
+      ['Edad', data.edad], ['Sexo', data.sexo],
+      ['Correo electrónico', data.correo], ['Teléfono', data.telefono],
+      ['Teléfono WhatsApp', data.whatsapp], ['Etapa', data.etapa],
+      ['Área', data.area], ['Sede', data.sede], ['Talla de playera', data.talla],
+      ['Miembro de iglesia', data.miembro], ['Primera vez', data.primeraVez],
+      ['Punto VidaReal', data.punto], ['Almuerzo', data.almuerzo],
+      ['Training', data.training], ['Check-in realizado', data.checkin],
+      ['Fecha de check-in', data.fechaCheckin], ['Registrado por', data.registradoPor],
+      ['Origen del check-in', data.origen]
+    ];
+    const grid = document.getElementById('attendeeDetailGrid');
+    grid.replaceChildren(...campos.map(([label, value]) => {
+      const item = document.createElement('div');
+      item.className = 'attendee-detail-item';
+      const title = document.createElement('span');
+      title.textContent = label;
+      const content = document.createElement('strong');
+      content.textContent = value || '—';
+      item.append(title, content);
+      return item;
+    }));
+  });
+</script>
 {% endblock %}

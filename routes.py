@@ -508,8 +508,43 @@ def ver_asistentes():
     if 'user_id' not in session:
         return redirect(url_for('routes.login'))
 
-    asistentes = list(mongo.db.asistentes.find())
-    return render_template('asistentes.html', asistentes=asistentes)
+    query = request.args.get('q', '').strip()
+    filtro_checkin = request.args.get('checkin', 'todos')
+    condiciones = []
+
+    if query:
+        texto_seguro = re.escape(query)
+        condiciones.append({'$or': [
+            {'nombre': {'$regex': texto_seguro, '$options': 'i'}},
+            {'nombre_completo': {'$regex': texto_seguro, '$options': 'i'}},
+            {'correo': {'$regex': texto_seguro, '$options': 'i'}},
+            {'telefono': {'$regex': texto_seguro, '$options': 'i'}},
+            {'ticket_id': {'$regex': texto_seguro, '$options': 'i'}}
+        ]})
+
+    if filtro_checkin == 'si':
+        condiciones.append({'checked_in': True})
+    elif filtro_checkin == 'no':
+        condiciones.append({'checked_in': {'$ne': True}})
+    else:
+        filtro_checkin = 'todos'
+
+    if not condiciones:
+        filtro = {}
+    elif len(condiciones) == 1:
+        filtro = condiciones[0]
+    else:
+        filtro = {'$and': condiciones}
+
+    asistentes = list(mongo.db.asistentes.find(filtro).sort('nombre', 1))
+    for asistente in asistentes:
+        asistente['fecha_checkin_texto'] = gt_time(asistente.get('timestamp_checkin'))
+    return render_template(
+        'asistentes.html',
+        asistentes=asistentes,
+        query=query,
+        filtro_checkin=filtro_checkin
+    )
 
 from datetime import datetime
 
@@ -598,8 +633,7 @@ def checkin_manual():
                     {'ticket_id': query}
                 ]
             }))
-    print(asistentes)
-    return render_template('asistentes.html', asistentes=asistentes, query=query)
+    return redirect(url_for('routes.ver_asistentes', q=query or ''))
     
 @routes.route('/checkin_manual/<id>', methods=['POST'])
 def confirmar_checkin_manual(id):
@@ -672,6 +706,65 @@ if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 
+def realizar_checkin_caso_especial(caso, registrado_por):
+    """Realiza un check-in único cuando se aprueba un caso con ticket válido."""
+    ticket_id = str(caso.get('ticket_id') or '').strip()
+    if not ticket_id:
+        return 'sin_ticket'
+
+    asistente = mongo.db.asistentes.find_one({'ticket_id': ticket_id})
+    if not asistente:
+        return 'no_encontrado'
+
+    if asistente.get('checked_in') is True:
+        mongo.db.casos_especiales.update_one(
+            {'_id': caso['_id']},
+            {'$set': {
+                'checkin_automatico': False,
+                'checkin_estado': 'ya_registrado',
+                'asistente_id': asistente['_id']
+            }}
+        )
+        return 'ya_registrado'
+
+    ahora = datetime.now(pytz.timezone('America/Guatemala'))
+    resultado = mongo.db.asistentes.update_one(
+        {'_id': asistente['_id'], 'checked_in': {'$ne': True}},
+        {'$set': {
+            'checked_in': True,
+            'timestamp_checkin': ahora,
+            'registrado_por': registrado_por,
+            'checkin_origen': 'caso_especial',
+            'caso_especial_id': caso['_id']
+        }}
+    )
+
+    if resultado.modified_count == 1:
+        mongo.db.casos_especiales.update_one(
+            {'_id': caso['_id']},
+            {'$set': {
+                'checkin_automatico': True,
+                'checkin_estado': 'realizado',
+                'checkin_en': ahora,
+                'asistente_id': asistente['_id']
+            }}
+        )
+        return 'realizado'
+
+    return 'ya_registrado'
+
+
+def flash_resultado_checkin_especial(resultado):
+    if resultado == 'realizado':
+        flash('Caso aprobado y check-in automático realizado correctamente.', 'success')
+    elif resultado == 'ya_registrado':
+        flash('Caso aprobado. El asistente ya tenía check-in.', 'info')
+    elif resultado == 'no_encontrado':
+        flash('Caso aprobado, pero el número de ticket no existe en asistentes.', 'warning')
+    else:
+        flash('Caso aprobado correctamente.', 'success')
+
+
 @routes.route('/casos-especiales', methods=['GET', 'POST'])
 def casos_especiales():
     if 'user_id' not in session:
@@ -687,7 +780,7 @@ def casos_especiales():
             "nombre": form['nombre'],
             "autorizado_por": form['autorizado_por'],
             "descripcion": form['descripcion'],
-            "ticket_id": form.get('ticket_id') or None,
+            "ticket_id": form.get('ticket_id', '').strip() or None,
             "codigo_autorizacion": form.get('codigo_autorizacion') or None,
             "estado": "solicitado",
             "registrado_en": datetime.now(pytz.timezone('America/Guatemala')),
@@ -773,8 +866,16 @@ def autorizar():
        
         request.form.get('id')
         if caso_id and accion in ['autorizado', 'rechazado']:
+            try:
+                caso_object_id = ObjectId(caso_id)
+            except Exception:
+                abort(400)
+            caso = mongo.db.casos_especiales.find_one({'_id': caso_object_id})
+            if not caso:
+                abort(404)
+
             mongo.db.casos_especiales.update_one(
-                {'_id': ObjectId(caso_id)},
+                {'_id': caso_object_id},
                 {
                     '$set': {
                         'estado': accion,
@@ -783,7 +884,14 @@ def autorizar():
                     }
                 }
             )
-            flash(f'Caso {accion} correctamente.', 'success')
+            if accion == 'autorizado':
+                resultado_checkin = realizar_checkin_caso_especial(
+                    caso,
+                    usuario_actual.get('username') or usuario_actual.get('nombre') or 'autorizador'
+                )
+                flash_resultado_checkin_especial(resultado_checkin)
+            else:
+                flash('Caso rechazado correctamente.', 'warning')
             return redirect(url_for('routes.autorizar'))
 
     casos_pendientes = list(mongo.db.casos_especiales.find({'estado': 'solicitado'}))
@@ -826,7 +934,13 @@ def ver_caso(caso_id):
                 'autorizado_en': datetime.now(pytz.timezone('America/Guatemala'))}
                 }
             )
-            flash("Caso aprobado correctamente", "success")
+            usuario_actual = mongo.db.usuarios.find_one({'_id': ObjectId(session['user_id'])})
+            registrado_por = (
+                usuario_actual.get('username') or usuario_actual.get('nombre')
+                if usuario_actual else session.get('username', 'autorizador')
+            )
+            resultado_checkin = realizar_checkin_caso_especial(caso, registrado_por)
+            flash_resultado_checkin_especial(resultado_checkin)
         elif accion == 'rechazar':
             mongo.db.casos_especiales.update_one(
                 {"_id": ObjectId(caso_id)},
