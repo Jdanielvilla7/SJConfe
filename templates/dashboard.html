@@ -6,44 +6,35 @@
 {% block content %}
 <div class="container-fluid px-0">
   <div class="row g-3">
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card metric-card metric-success">
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card metric-card metric-summary metric-success">
         <div class="card-body">
-          <div class="metric-icon"><i class="fas fa-circle-check"></i></div>
-          <h6 class="card-title">Con check-in</h6>
-          <p class="card-text fs-4">{{ registrados }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card metric-card metric-warning">
-        <div class="card-body">
-          <div class="metric-icon"><i class="fas fa-handshake-angle"></i></div>
-          <h6 class="card-title">Voluntarios sin check-in</h6>
-          <p class="card-text fs-4">{{ pendientes_voluntarios }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <button class="card metric-card metric-danger metric-toggle w-100" type="button"
-        data-bs-toggle="collapse" data-bs-target="#desglosePendientes"
-        aria-expanded="false" aria-controls="desglosePendientes">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="metric-icon"><i class="fas fa-user-group"></i></div>
-            <i class="fas fa-chevron-down metric-chevron"></i>
+          <div class="metric-main">
+            <div class="metric-icon"><i class="fas fa-circle-check"></i></div>
+            <h6 class="card-title">Con check-in</h6>
+            <p class="card-text fs-4">{{ registrados }}</p>
           </div>
-          <h6 class="card-title">Asistentes sin check-in</h6>
-          <p class="card-text fs-4">{{ pendientes_normales }}</p>
+          <div class="metric-segments">
+            <div><span>Básico</span><strong>{{ registrados_basicos }}</strong></div>
+            <div><span>Completo</span><strong>{{ registrados_completos }}</strong></div>
+            <div><span>Voluntarios</span><strong>{{ registrados_voluntarios }}</strong></div>
+          </div>
         </div>
-      </button>
+      </div>
     </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card metric-card metric-danger">
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card metric-card metric-summary metric-danger">
         <div class="card-body">
-          <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
-          <h6 class="card-title">Total Sin check-in</h6>
-          <p class="card-text fs-4">{{ pendientes }}</p>
+          <div class="metric-main">
+            <div class="metric-icon"><i class="fas fa-hourglass-half"></i></div>
+            <h6 class="card-title">Sin check-in</h6>
+            <p class="card-text fs-4">{{ pendientes }}</p>
+          </div>
+          <div class="metric-segments">
+            <div><span>Básico</span><strong>{{ pendientes_basicos }}</strong></div>
+            <div><span>Completo</span><strong>{{ pendientes_completos }}</strong></div>
+            <div><span>Voluntarios</span><strong>{{ pendientes_voluntarios }}</strong></div>
+          </div>
         </div>
       </div>
     </div>
@@ -79,38 +70,6 @@
 
   </div>
 
-  <div class="collapse mt-3" id="desglosePendientes">
-    <div class="card pending-breakdown">
-      <div class="card-header d-flex align-items-center gap-2">
-        <i class="fas fa-chart-pie text-danger"></i>
-        <h6 class="mb-0">Desglose de asistentes normales sin check-in</h6>
-      </div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <div class="breakdown-item">
-              <span><i class="fas fa-ticket me-2 text-info"></i>Básicos</span>
-              <strong>{{ pendientes_basicos }}</strong>
-            </div>
-          </div>
-          <div class="col-sm-6">
-            <div class="breakdown-item">
-              <span><i class="fas fa-star me-2 text-warning"></i>Experiencia Completa</span>
-              <strong>{{ pendientes_completos }}</strong>
-            </div>
-          </div>
-          {% if pendientes_otros %}
-          <div class="col-sm-6">
-            <div class="breakdown-item">
-              <span><i class="fas fa-circle-question me-2 text-secondary"></i>Otros boletos</span>
-              <strong>{{ pendientes_otros }}</strong>
-            </div>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 {% if session.get('rol') == 'admin' %}
 <div class="container-fluid px-0 mt-4">

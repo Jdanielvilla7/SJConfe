@@ -284,13 +284,24 @@ def dashboard():
 
     total = mongo.db.asistentes.count_documents({})
     registrados = mongo.db.asistentes.count_documents({'checked_in': True})
+    registrados_basicos = mongo.db.asistentes.count_documents({
+        'checked_in': True,
+        'boleto': {'$in': ['Basico', 'Básico']}
+    })
+    registrados_completos = mongo.db.asistentes.count_documents({
+        'checked_in': True,
+        'boleto': {'$in': ['Experiencia Completa', 'Completo']}
+    })
+    registrados_voluntarios = mongo.db.asistentes.count_documents({
+        'checked_in': True,
+        'boleto': {'$regex': 'voluntario', '$options': 'i'}
+    })
     filtro_pendientes = {'checked_in': {'$ne': True}}
     pendientes = mongo.db.asistentes.count_documents(filtro_pendientes)
     pendientes_voluntarios = mongo.db.asistentes.count_documents({
         **filtro_pendientes,
         'boleto': {'$regex': 'voluntario', '$options': 'i'}
     })
-    pendientes_normales = pendientes - pendientes_voluntarios
     pendientes_basicos = mongo.db.asistentes.count_documents({
         **filtro_pendientes,
         'boleto': {'$in': ['Basico', 'Básico']}
@@ -299,10 +310,6 @@ def dashboard():
         **filtro_pendientes,
         'boleto': {'$in': ['Experiencia Completa', 'Completo']}
     })
-    pendientes_otros = max(
-        pendientes_normales - pendientes_basicos - pendientes_completos,
-        0
-    )
     porcentaje = round(((registrados ) / total * 100), 2) if total else 0
     casos_especiales = mongo.db.casos_especiales.count_documents({})
 
@@ -346,12 +353,13 @@ def dashboard():
         filtro_sexo=sexo,
         total=total,
         registrados=registrados,
+        registrados_basicos=registrados_basicos,
+        registrados_completos=registrados_completos,
+        registrados_voluntarios=registrados_voluntarios,
         pendientes=pendientes,
         pendientes_voluntarios=pendientes_voluntarios,
-        pendientes_normales=pendientes_normales,
         pendientes_basicos=pendientes_basicos,
         pendientes_completos=pendientes_completos,
-        pendientes_otros=pendientes_otros,
         porcentaje=porcentaje,
         casos_especiales=casos_especiales
     )
