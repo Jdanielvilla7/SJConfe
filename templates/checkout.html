@@ -153,34 +153,59 @@
     }
 
     const html5QrCode = new Html5Qrcode("reader");
-    let currentCameraId = null;
     let isScannerRunning = false;
+    let isScannerStarting = false;
 
     const modalElement = document.getElementById('resultadoModal');
     const modalBody = modalElement.querySelector('.modal-body');
     const bootstrapModal = new bootstrap.Modal(modalElement);
 
-    function startScanner() {
-      Html5Qrcode.getCameras().then(devices => {
-        const backCamera = devices.find(device => /back|environment/i.test(device.label)) || devices[0];
-        currentCameraId = backCamera.id;
+    const scannerConfig = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.333334
+    };
 
-        html5QrCode.start(
-          { deviceId: { exact: currentCameraId } },
-          { fps: 10, qrbox: 250 },
-          onScanSuccess).then(() => {
-            isScannerRunning = true
-          }).catch(err => console.error("Error al iniciar escáner:", err));
-      }).catch(err => {
-        alert("Error accediendo a la cámara.");
-        console.error("Error obteniendo cámaras:", err);
-      });
+    async function startScanner() {
+      if (isScannerRunning || isScannerStarting) return;
+      isScannerStarting = true;
+
+      try {
+        // iOS oculta a menudo las etiquetas antes de conceder permiso.
+        // facingMode solicita la lente trasera sin depender de devices[0].
+        try {
+          await html5QrCode.start(
+            { facingMode: { exact: "environment" } },
+            scannerConfig,
+            onScanSuccess
+          );
+        } catch (environmentError) {
+          const devices = await Html5Qrcode.getCameras();
+          if (!devices.length) throw environmentError;
+
+          const rearPattern = /back|rear|environment|trasera|posterior|arrière|rück/i;
+          const rearCamera = devices.find(device => rearPattern.test(device.label));
+          const selectedCamera = rearCamera || devices[devices.length - 1];
+
+          await html5QrCode.start(
+            { deviceId: { exact: selectedCamera.id } },
+            scannerConfig,
+            onScanSuccess
+          );
+        }
+
+        isScannerRunning = true;
+      } catch (err) {
+        alert("No fue posible abrir la cámara trasera. Verifica el permiso de cámara en Safari.");
+        console.error("Error al iniciar la cámara trasera:", err);
+      } finally {
+        isScannerStarting = false;
+      }
     }
 
     async function onScanSuccess(decodedText) {
-      await html5QrCode.stop().then(() => {
-        isScannerRunning = false;
-      });
+      await html5QrCode.stop();
+      isScannerRunning = false;
 
       // Enviar QR al servidor sin recargar
       const formData = new FormData();
@@ -209,12 +234,12 @@
 
     // Cuando cierra el modal, reinicia escáner
     modalElement.addEventListener("hidden.bs.modal", () => {
-      if (!isScannerRunning) {
+      if (!isScannerRunning && !isScannerStarting) {
         startScanner();
       }
     });
 
-    if (!isScannerRunning) {
+    if (!isScannerRunning && !isScannerStarting) {
       startScanner();
     }
   });
