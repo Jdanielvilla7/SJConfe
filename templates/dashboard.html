@@ -1,134 +1,115 @@
 {% extends "layout.html" %}
 
-{% block title %}Dashboard{% endblock %}
-{% block h1 %}Dashboard <i class="fas fa-chart-line"></i>{% endblock %}
+{% block title %}Dashboard | Cristianamente{% endblock %}
+{% block h1 %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid pt-4">
-  <div class="row justify-content-center g-3">
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-success shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Con check-in</h6>
-          <p class="card-text fs-4">{{ registrados }}</p>
-        </div>
-      </div>
+<section class="dashboard-page">
+  <header class="dashboard-hero">
+    <div>
+      <span class="eyebrow"><i class="fas fa-bolt"></i> Resumen en tiempo real</span>
+      <h2>Todo el evento, de un vistazo.</h2>
+      <p>Consulta el avance de ingresos y la distribución de asistentes de Cristianamente.</p>
     </div>
+    <div class="dashboard-status"><span></span> Sistema activo</div>
+  </header>
 
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-danger shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Sin check-in</h6>
-          <p class="card-text fs-4">{{ pendientes }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-primary shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Total general </h6>
-          <p class="card-text fs-4">{{ total }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-dark shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">Avance</h6>
-          <p class="card-text fs-4">{{ porcentaje }}%</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-      <div class="card text-white bg-warning shadow-sm text-center">
-        <div class="card-body">
-          <h6 class="card-title">C. Especiales</h6>
-          <p class="card-text fs-4">{{ casos_especiales }}</p>
-        </div>
-      </div>
-    </div>
-
-
-
+  <div class="metrics-grid">
+    <article class="metric-card metric-primary">
+      <div class="metric-icon"><i class="fas fa-users"></i></div>
+      <div class="metric-copy"><span>Total de asistentes</span><strong>{{ total }}</strong><small>Personas registradas</small></div>
+    </article>
+    <article class="metric-card metric-success">
+      <div class="metric-icon"><i class="fas fa-circle-check"></i></div>
+      <div class="metric-copy"><span>Con check-in</span><strong>{{ registrados }}</strong><small>Ingresos confirmados</small></div>
+    </article>
+    <article class="metric-card metric-pending">
+      <div class="metric-icon"><i class="fas fa-clock"></i></div>
+      <div class="metric-copy"><span>Por ingresar</span><strong>{{ pendientes }}</strong><small>Check-ins pendientes</small></div>
+    </article>
+    <article class="metric-card metric-special">
+      <div class="metric-icon"><i class="fas fa-user-shield"></i></div>
+      <div class="metric-copy"><span>Casos especiales</span><strong>{{ casos_especiales }}</strong><small>Solicitudes registradas</small></div>
+    </article>
   </div>
-</div>
+
+  <div class="dashboard-overview{% if session.get('rol') != 'admin' %} overview-single{% endif %}">
+    <article class="progress-card">
+      <div class="panel-heading">
+        <div><span class="eyebrow">Avance general</span><h3>Control de ingreso</h3></div>
+        <i class="fas fa-arrow-trend-up"></i>
+      </div>
+      <div class="progress-content">
+        <div class="progress-ring" style="--progress: {{ porcentaje }}">
+          <div><strong>{{ porcentaje }}%</strong><span>completado</span></div>
+        </div>
+        <div class="progress-legend">
+          <div><span class="legend-dot is-checked"></span><p><strong>{{ registrados }}</strong> Con check-in</p></div>
+          <div><span class="legend-dot is-pending"></span><p><strong>{{ pendientes }}</strong> Pendientes</p></div>
+        </div>
+      </div>
+    </article>
+
+    {% if session.get('rol') == 'admin' %}
+    <article class="chart-card">
+      <div class="panel-heading">
+        <div><span class="eyebrow">Audiencia</span><h3>Distribución por edad</h3></div>
+        <i class="fas fa-chart-column"></i>
+      </div>
+
+      <form method="GET" class="dashboard-filters">
+        <label>
+          <span>País</span>
+          <select name="pais" class="form-select">
+            <option value="todos" {% if filtro_pais == 'todos' %}selected{% endif %}>Todos los países</option>
+            {% for item in paises %}<option value="{{ item }}" {% if filtro_pais == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Iglesia</span>
+          <select name="iglesia" class="form-select">
+            <option value="todos" {% if filtro_iglesia == 'todos' %}selected{% endif %}>Todas las iglesias</option>
+            {% for item in iglesias %}<option value="{{ item }}" {% if filtro_iglesia == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+          </select>
+        </label>
+        <button type="submit" class="btn btn-brand" aria-label="Aplicar filtros"><i class="fas fa-sliders"></i> Filtrar</button>
+        {% if filtro_pais != 'todos' or filtro_iglesia != 'todos' %}
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-ghost" aria-label="Limpiar filtros"><i class="fas fa-rotate-left"></i></a>
+        {% endif %}
+      </form>
+
+      <div class="chart-wrap"><canvas id="graficaSegmentos"></canvas></div>
+    </article>
+    {% endif %}
+  </div>
+</section>
+
 {% if session.get('rol') == 'admin' %}
-<div class="container mt-4">
-
-  <form method="GET" class="row g-2 mb-4">
-    <div class="col-md-3">
-      <label class="form-label">Pais</label>
-      <select name="pais" class="form-select">
-        <option value="todos" {% if filtro_pais=='todos' %}selected{% endif %}>Todos</option>
-        {% for item in paises %}
-        <option value="{{ item }}" {% if filtro_pais==item %}selected{% endif %}>{{ item }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Iglesia</label>
-      <select name="iglesia" class="form-select">
-        <option value="todos" {% if filtro_iglesia=='todos' %}selected{% endif %}>Todas</option>
-        {% for item in iglesias %}
-        <option value="{{ item }}" {% if filtro_iglesia==item %}selected{% endif %}>{{ item }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-md-2 align-self-end">
-      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-    </div>
-  </form>
-
-  <div class="card shadow-sm">
-    <div class="card-header bg-dark text-white">
-      <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Segmentos por edad</h5>
-    </div>
-    <div class="card-body">
-      <canvas id="graficaSegmentos" width="400" height="180"></canvas>
-    </div>
-  </div>
-</div>
-{% endif %}
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const ctx = document.getElementById('graficaSegmentos').getContext('2d');
-
-  const data = {
-    labels: {{ datos_segmentos.labels| tojson }},
-  datasets: [{
-    label: 'Cantidad de asistentes',
-    data: {{ datos_segmentos.valores | tojson }},
-    backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e'],
-    borderColor: ['#2e59d9', '#17a673', '#e0a800'],
-    borderWidth: 1
-    }]
-  };
-
-  const config = {
+  const chartCanvas = document.getElementById('graficaSegmentos');
+  new Chart(chartCanvas, {
     type: 'bar',
-    data: data,
+    data: {
+      labels: {{ datos_segmentos.labels | tojson }},
+      datasets: [{
+        data: {{ datos_segmentos.valores | tojson }},
+        backgroundColor: ['#d94b24', '#f06a2c', '#45bfd3', '#8f2d16'],
+        borderRadius: 9,
+        borderSkipped: false,
+        maxBarThickness: 54
+      }]
+    },
     options: {
       responsive: true,
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: 'Distribución por edad'
-        }
-      },
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { displayColors: false, padding: 12, cornerRadius: 10 } },
       scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1
-          }
-        }
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: '#796a65', font: { family: 'DM Sans', weight: 600 } } },
+        y: { beginAtZero: true, border: { display: false }, grid: { color: '#f3e8e2' }, ticks: { precision: 0, color: '#9a8982' } }
       }
-    },
-  };
-
-  new Chart(ctx, config);
+    }
+  });
 </script>
-
+{% endif %}
 {% endblock %}

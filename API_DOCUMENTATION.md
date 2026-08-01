@@ -1,5 +1,5 @@
 # 📋 Documentación API - Registro de Asistentes
-## SJConfe - Sistema de Gestión de Conferencia
+## Cristianamente - Sistema de Gestión del evento
 
 ---
 

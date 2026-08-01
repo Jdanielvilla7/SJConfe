@@ -651,7 +651,7 @@ def dashboard():
     segmento_25_mas = sum(1 for a in asistentes if obtener_edad(a) >= 25)
 
     datos_segmentos = {
-        "labels": ["12-14","15-17 años", "18-24 años", "25-30+ años"],
+        "labels": ["12-14 años", "15-17 años", "18-24 años", "25 años o más"],
         "valores": [segmento_12_14,segmento_15_17, segmento_18_24, segmento_25_mas]
     }
 
